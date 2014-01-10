@@ -4,7 +4,7 @@ Donate link: http://adblockingdetector.jtmorris.net/
 Tags: adblock, adblocker, ad blocker, adblock plus, detector, advertisement
 Requires at least: 3.8
 Tested up to: 3.8
-Stable tag: 0.2
+Stable tag: 1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,6 +61,9 @@ web browser, and operating system you are using.  We will then investigate the p
 
 
 == Changelog ==
+= 1.0 =
+* Prep for initial publishing on WordPress.org.
+* Fix a few links.
 = 0.2 =
 * Add content and formatting required to submit this plugin to WordPress.org's repository.
 = 0.1 =
