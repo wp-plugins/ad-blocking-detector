@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name: Ad Blocking Detector
- * Plugin URI: http:jtmorris.net
+ * Plugin URI: http:adblockingdetector.jtmorris.net
  * Description: A plugin to detect ad blocking browser extensions and display alternative content to site visitors.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: John Morris
  * Author URI: http://jtmorris.net
  * License: GPL2
