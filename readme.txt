@@ -3,8 +3,8 @@ Contributors: jtmorris
 Donate link: http://adblockingdetector.jtmorris.net/
 Tags: adblock, adblocker, ad blocker, adblock plus, detector, advertisement
 Requires at least: 3.8
-Tested up to: 3.8
-Stable tag: 1.2.0
+Tested up to: 3.9
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -74,6 +74,8 @@ to display rotating ads while harnessing the power of ad block detection.  You c
 
 
 == Changelog ==
+= 1.2.1 =
+* Add support for WordPress 3.9.
 = 1.2.0 =
 * Enabled shortcode processing in ad code. Now you can take advantage of other [plugin's capabilities](http://adblockingdetector.jtmorris.net/display-rotating-ads/) inside Ad Blocking Detector code.
 * Bug fixes.
