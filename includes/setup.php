@@ -123,10 +123,6 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 					//	And we update the option in the database to reflect new
 					//	db version
 					update_option( 'abd_cur_db_version', self::$db_version );
-
-					//	And we need to update any NULL blog_ids to something
-					$sql = "UPDATE " . ABD_Database::get_table_name() . " SET blog_id=1 WHERE blog_id=NULL";
-					$wpdb->query($sql);
 				}
 
 
