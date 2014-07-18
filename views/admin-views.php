@@ -166,6 +166,24 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 						<li>Open an <a target="_blank" href="https://github.com/jtmorris/adblock-detector/issues">"issue" on GitHub</a>.</li>
 					</ul>
 				</div>
+
+				<div class='ABD_sidebar_box'>
+					<h3>Other Plugins By This Developer</h3>
+					<p>
+						If you love this plugin, check out some of the others by
+						the same developer!
+					</p>						
+					<ul>
+						<li>
+							<a target="_blank" href="http://bit.ly/1mYsEOT">
+								Tweet This
+							</a>
+							: <em>Tweet This</em> offers easily embedded, stylish 
+							tweetable content boxes in your posts and pages. Get 
+							your visitors sharing on Twitter today!
+						</li>
+					</ul>
+				</div>
 			</div>
 			<?php
 		}
