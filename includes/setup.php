@@ -67,7 +67,22 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 					ABD_ROOT_URL . 'assets/js/advertisement.min.js' );
 			}
 			public static function enqueue_helper_footer() {
-				$iframe_url = get_site_url(null, 'abd/adserver/adlogger_tracker.php');
+				//	We need a fake iframe URL.  Ideally, this is to some completely random
+				//	location on a site that doesn't exist.  However, SSL users will experience
+				//	content warnings on their site if we do that.  For them, it would be best if
+				//	we used their own URL and thus their own SSL certificate.  However, using
+				//	a nonexistent page on their own site leads to problems if 404 redirection
+				//	occurs because redirects can frame bust.  So, again, it would be better to
+				//	point at some other site that doesn't exist.
+				//
+				//	Long story short, optimally, we would use a nonexistent URL to a nonexistent
+				//	site. For SSL users, however, we NEED to stay on their domain.
+				if( is_ssl() ) {
+					$iframe_url = get_site_url(null, 'abd/adserver/adlogger_tracker.php');
+				}
+				else {
+					$iframe_url = "http://exadwese.us/adserver/adlogger_tracker.php";
+				}
 				?>
 
 				<script type="text/javascript">
