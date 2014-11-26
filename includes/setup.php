@@ -79,9 +79,11 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 				//	site. For SSL users, however, we NEED to stay on their domain.
 				if( is_ssl() ) {
 					$iframe_url = get_site_url(null, 'abd/adserver/adlogger_tracker.php');
+					$sec = 'security=\"restricted\" sandbox=\"\"';
 				}
 				else {
 					$iframe_url = "http://exadwese.us/adserver/adlogger_tracker.php";
+					$sec = '';
 				}
 				?>
 
@@ -101,7 +103,7 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 							//	</div>
 							//
 							//	So, output it using document.write()
-							document.write("<div id='abd-ad-iframe-wrapper' style=\"position: fixed !important; bottom: -999em !important; left: -999em !important; width: 0 !important; height: 0 !important; overflow: hidden !important;\"><iframe id=\"abd-ad-iframe\" src=\"<?php echo $iframe_url; ?>\" security=\"restricted\" sandbox=\"\" style=\"height: 728px; width: 90px;\"><\/iframe><\/div>");
+							document.write("<div id='abd-ad-iframe-wrapper' style=\"position: fixed !important; bottom: -999em !important; left: -999em !important; width: 0 !important; height: 0 !important; overflow: hidden !important;\"><iframe id=\"abd-ad-iframe\" src=\"<?php echo $iframe_url; ?>\" <?php echo $sec; ?> style=\"height: 728px; width: 90px;\"><\/iframe><\/div>");
 						}
 					})();
 				</script>
