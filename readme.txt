@@ -4,7 +4,7 @@ Donate link: http://adblockingdetector.johnmorris.me/
 Tags: adblock, adblocker, ad blocker, adblock plus, detector, advertisement, ads, ad blocking
 Requires at least: 4.2
 Tested up to: 4.2
-Stable tag: 3.0.0
+Stable tag: 3.0.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -120,6 +120,8 @@ creating a whole new plugin listing.  If you want to see the screenshots and ban
 
 
 == Changelog ==
+= 3.0.1 =
+* When available, use Block List Countermeasure Plugin images in admin dashboard to circumvent ad blocker block lists.
 = 3.0.0 =
 * NEW FEATURES: [Block List Countermeasure](http://adblockingdetector.johnmorris.me/what-is-the-block-list-countermeasure-plugin/), [Detection Improvement Options (now detects Ghostery)](http://adblockingdetector.johnmorris.me/detection-improvement-user-defined-wrapper-css-selectors/)
 * Revamped user interface that more closely matches WordPress' styling, quashes several bugs, and supports more advanced features
@@ -239,6 +241,8 @@ creating a whole new plugin listing.  If you want to see the screenshots and ban
 
 
 == Upgrade Notice ==
+= 3.0.1 =
+MASSIVE UPDATE! Lots of new features and improvements, numerous code improvements. As always, it is [highly recommended to test](http://lifeinthegrid.com/do-you-localhost-your-wordpress/) before installing major plugin updates!
 = 3.0.0 =
 MASSIVE UPDATE! Lots of new features and improvements, numerous code improvements. As always, it is [highly recommended to test](http://lifeinthegrid.com/do-you-localhost-your-wordpress/) before installing major plugin updates!
 = 2.2.0 =
