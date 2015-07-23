@@ -4,7 +4,7 @@ Donate link: http://adblockingdetector.johnmorris.me/
 Tags: adblock, adblocker, ad blocker, adblock plus, detector, advertisement, ads, ad blocking
 Requires at least: 4.2
 Tested up to: 4.2
-Stable tag: 3.0.1
+Stable tag: 3.0.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -110,6 +110,9 @@ creating a whole new plugin listing.  If you want to see the screenshots and ban
 
 
 == Screenshots ==
+The screenshots below may be erroneously blocked by ad blockers.  Temporarily disable any ad blockers you are using to view the
+screenshots.
+
 1. Administration Dashboard (Getting Started Tab)
 2. Administration Dashboard (Manage Shortcodes Tab)
 3. Administration Dashboard (Add New Shortcode Tab)
@@ -120,6 +123,9 @@ creating a whole new plugin listing.  If you want to see the screenshots and ban
 
 
 == Changelog ==
+= 3.0.2 =
+* Performance improvement: Cache shortcode option names rather than search entire wp_options table. 
+* Catch PHP Warning when recursively deleting directories.
 = 3.0.1 =
 * When available, use Block List Countermeasure Plugin images in admin dashboard to circumvent ad blocker block lists.
 = 3.0.0 =
