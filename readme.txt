@@ -255,6 +255,8 @@ screenshots.
 == Upgrade Notice ==
 = 3.1.0 =
 Dramatic performance improvements! If versions 3.0.0 through 3.0.2 were displaying errors, or was not functioning correctly, install this update!
+= 3.1.0 =
+Dramatic performance improvements! If versions 3.0.0 through 3.0.2 were displaying errors, or was not functioning correctly, install this update!
 = 3.0.1 =
 MASSIVE UPDATE! Lots of new features and improvements, numerous code improvements. As always, it is [highly recommended to test](http://lifeinthegrid.com/do-you-localhost-your-wordpress/) before installing major plugin updates!
 = 3.0.0 =
