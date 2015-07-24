@@ -4,7 +4,7 @@ Donate link: http://adblockingdetector.johnmorris.me/
 Tags: adblock, adblocker, ad blocker, adblock plus, detector, advertisement, ads, ad blocking
 Requires at least: 4.2
 Tested up to: 4.2.3
-Stable tag: 3.1.0
+Stable tag: 3.1.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -123,6 +123,8 @@ screenshots.
 
 
 == Changelog ==
+= 3.1.1 =
+* Fix undefined variable error.
 = 3.1.0 =
 * Add performance statistics logging to help track down performance related bugs and problems.
 * Refactored WPSM framework to eliminate [circular reference PHP memory leaks](http://paul-m-jones.com/archives/262), by removing circular references. Should eliminate the sporadic "Allowed Memory Size ... Exhausted" related plugin errors.  Particularly with older versions of PHP.
