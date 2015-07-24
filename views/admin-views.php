@@ -189,43 +189,74 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 			 * awesome.
 			 */
 
+			//		Collect start state for performance logging
+			$start_time = microtime( true );
+			$start_mem = memory_get_usage( true );
+
 			//	Remove any old messages on each page load
 			ABDWPSM_Settings_Manager::add_query_arg_to_strip( 'msg-code' );
 			ABDWPSM_Settings_Manager::add_query_arg_to_strip( 'result' );
 
 			//	Tabs
+			$time_bt = microtime( true );
+			$mem_bt = memory_get_usage( true );
+			
 			$GS_Tab = new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Getting Started' ),
 				'display_description' => self::getting_started_tab_header(),
 				'url_slug'            => 'getting-started',
 				'page'                => 'ad-blocking-detector'
 			) );
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $GS_Tab', $time_bt, $mem_bt, true );
+			$time_after_tab = microtime( true );
+			$mem_after_tab = memory_get_usage( true );
+
 			$Existing_Shortcodes_Tab = new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Manage Shortcodes' ),
 				'display_description' => self::manage_shortcodes_tab_header(),
 				'url_slug'            => 'manage-shortcodes',
 				'page'                => 'ad-blocking-detector'
 			) );
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $ES_Tab', $time_after_tab, $mem_after_tab, true );
+			$time_after_tab = microtime( true );
+			$mem_after_tab = memory_get_usage( true );
+
 			$New_Shortcode_Tab = new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Add New Shortcode' ),
 				'display_description' => self::add_new_shortcode_tab_header(),
 				'url_slug'            => 'new-shortcodes',
 				'page'                => 'ad-blocking-detector'
 			) );
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $NS_Tab', $time_after_tab, $mem_after_tab, true );
+			$time_after_tab = microtime( true );
+			$mem_after_tab = memory_get_usage( true );
+
 			$Settings_Tab = new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Advanced Settings' ),
 				'display_description' => self::settings_tab_header(),
 				'url_slug'            => 'settings',
 				'page'                => 'ad-blocking-detector'
 			) );
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $Settings_Tab', $time_after_tab, $mem_after_tab, true );
+			$time_after_tab = microtime( true );
+			$mem_after_tab = memory_get_usage( true );
+
 			$Debug_Tab = new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Report a Problem / Debug' ),
 				'display_description' => self::debug_tab_header(),
 				'url_slug'            => 'debug',
 				'page'                => 'ad-blocking-detector'
 			) );
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $Debug_Tab', $time_after_tab, $mem_after_tab, true );
+			$time_after_tab = microtime( true );
+			$mem_after_tab = memory_get_usage( true );
+
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs', $time_bt, $mem_bt, true );
 
 			//	Options Groups
+			$time_bt = microtime( true );
+			$mem_bt = memory_get_usage( true );
+			
 			//	New Shortcode Tab
 			$NST_OG = new ABDWPSM_Options_Group( array(
 				'db_option_name' => ABD_Database::get_shortcode_prefix() . ABD_Database::get_next_id(),
@@ -238,10 +269,14 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				'db_option_name' => 'abd_user_settings'
 			) );
 			$AS_OG->add_to_tab( $Settings_Tab );
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // options groups', $time_bt, $mem_bt, true );
 
 
 
 			//	Sections
+			$time_bt = microtime( true );
+			$mem_bt = memory_get_usage( true );
+			
 			$NST_Basic_Section = new ABDWPSM_Section( array(
 				'id'                  => 'nst_og-basic_options',
 				'display_name'        => ABD_L::__( 'Basic Shortcode Settings' ),
@@ -268,10 +303,21 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				'display_name'        => ABD_L::__( 'Customize Iframe Detection Method' ),
 				'display_description' => self::settings_customize_iframe_section_header()
 			) );
-			$AS_Iframe_Section->add_to_options_group( $AS_OG );
+			$AS_Iframe_Section->add_to_options_group( $AS_OG );			
+			
+			$AS_Log_Section = new ABDWPSM_Section( array(
+				'id'                  => 'as_uds-log_management',
+				'display_name'        => ABD_L::__( 'Log Options' ),
+				'display_description' => self::settings_customize_log_section_header()
+			) );
+			$AS_Log_Section->add_to_options_group( $AS_OG );
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // sections', $time_bt, $mem_bt, true );
 
 
 			//	Fields
+			$time_bt = microtime( true );
+			$mem_bt = memory_get_usage( true );
+			
 			$NST_Basic_Fs = array();
 			$AS_UDS_Fs = array();
 			//	Basic Section
@@ -385,12 +431,37 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 			$AS_Iframe_URL->add_to_section( $AS_Iframe_Section );
 
 
+			$AS_Log_enable_perf = new ABDWPSM_Field( array(
+				'field_name'          => 'enable_perf_logging',
+				'type'                => 'radio',
+				'display_name'        => ABD_L::__( 'Performance Statistics Logging' ),
+				'display_description' => ABD_L::__( 'Whether to record execution times and memory usage in the Session Log. This helps tracking down performance related plugin bugs, but generates a lot of log entries and uses slightly more overhead and database traffic.' ),				
+				'field_options_array' => array(
+					'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
+					'default' => 'yes'
+				)
+			) );
+			$AS_Log_enable_perf->add_to_section( $AS_Log_Section );
+
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // fields', $time_bt, $mem_bt, true );
+
+
+			//		Performance log
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // before ogize_existing_shortcodes()', $start_time, $start_mem );
 
 			//	Deal with Existing Shortcodes Tab which is all programmatic, not hard coded
-			self::ogize_existing_shortcodes( $Existing_Shortcodes_Tab );			
+			self::ogize_existing_shortcodes( $Existing_Shortcodes_Tab );
+
+
+			//		Performance log
+			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings()', $start_time, $start_mem );
 		}
 
 		protected static function ogize_existing_shortcodes( &$The_Tab_To_Add_To ) {			
+			//		Collect start state for performance logging
+			$start_time = microtime( true );
+			$start_mem = memory_get_usage( true );
+
 			$enabled_text                  = ABD_L::__( 'Enabled (default)' );
 			$disabled_text                 = ABD_L::__( 'Disabled' );
 			$choices_array                 = array();
@@ -468,6 +539,11 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				//	No shortcodes in array.
 				$The_Tab_To_Add_To->set_display_description( '<br /><h3>' . ABD_L::__( 'No shortcodes yet! Click the "Add New Shortcode" tab above to create your first one.' ) . '</h3>' );
 			}
+
+
+
+			//		Performance log
+			ABD_Log::perf_summary( 'ABD_Database::ogize_existing_shortcodes()', $start_time, $start_mem );
 		}	//	end ogize_existing_shortcodes
 
 
@@ -1140,13 +1216,13 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 
 
 
-				<div class="abd-masonry-block">
+				<div class="abd-masonry-block" style="width: 100%;">
 					<h3><?php ABD_L::_e( 'Session Log' ); ?></h3>
 
 					<p>
 						<?php ABD_L::_e( 'This plugin logs noteworthy actions and errors during usage of this dashboard. If an action isn\'t working correctly, try clearing this log using the button below, reattempting the action, then checking the log for information, or pass it to the developer in a bug report or support request.' ); ?>
 					</p>
-					<div><textarea>SESSION LOG&#13;&#10;============&#13;&#10;============&#13;&#10;&#13;&#10;<?php echo ABD_Log::get_readable_log(); ?></textarea></div>
+					<div><textarea style='width: 100% !important'>SESSION LOG&#13;&#10;============&#13;&#10;============&#13;&#10;&#13;&#10;<?php echo ABD_Log::get_readable_log(); ?></textarea></div>
 
 					<!-- Space for Date and Time -->
 					<p id="abd-js-date-time"><strong><?php ABD_L::_e( 'Current Date and Time: ' ); ?></strong></p>
@@ -1687,6 +1763,19 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 				<em>
 					<?php ABD_L::_e( 'NOTE: If your site utilizes SSL encryption, the domain used in the iframe must match your website\'s domain, and must be called with https, or visitors will receive mixed content warnings. If your site does not use SSL encryption, the domain will not matter.' ); ?>	
 				</em>
+			</p>
+
+			<?php
+			return ob_get_clean();
+		}
+
+
+		protected static function settings_customize_log_section_header() {
+			ob_start();
+			?>
+
+			<p>
+				<?php  ABD_L::_e( 'This plugin keeps a running log of noteworth activity, errors, and debugging information to help the plugin users and the developer resolve problems. This log is viewable on the "Report a Problem / Debug" tab above. Use the settings below to customize log entries as desired.' ); ?>
 			</p>
 
 			<?php

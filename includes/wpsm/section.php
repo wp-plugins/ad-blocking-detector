@@ -55,7 +55,7 @@ if( !class_exists( 'ABDWPSM_Section' ) ) {
          * Append a field object to this section's fields.
          * @param {object} $Field A ABDWPSM_Field object to add.
          */
-        public function add_field( $Field ) {
+        public function add_field( $Field, $skip_ip_check = false ) {
             //  Don't add something that isn't a field.
             if( !( $Field instanceof ABDWPSM_Field ) ) {
                 //  Okay, it's not an instance of ABDWPSM_Field, to make
@@ -69,7 +69,7 @@ if( !class_exists( 'ABDWPSM_Section' ) ) {
 
             //  If this field already has a parent, then we don't want to
             //  add it because that will screw up references to it.
-            if( $Field->get_section() ) {
+            if( $Field->get_section( false ) ) {
                 ABDWPSM_Settings_Manager::die_with_message( 'Cannot add a field to multiple sections!' );
             }
 
@@ -94,11 +94,13 @@ if( !class_exists( 'ABDWPSM_Section' ) ) {
 
 
             //  Update the field's section
-            $Field->set_section_reference( $this );
-
+            $Field->set_section_reference( $this->get_id() );
+            
 
             //  IP uniqueness check
-            $Field->ip_uniqueness_check();
+            if( !$skip_ip_check ) {
+                $Field->ip_uniqueness_check();
+            }
 
 
             //  Okay, add the bastard.
@@ -246,6 +248,8 @@ if( !class_exists( 'ABDWPSM_Section' ) ) {
          */
         public function register_fields( $og_identifier ) {
             foreach( $this->my_fields as $Field ) {
+                $Field->ip_uniqueness_check();
+
                 add_settings_field(
                     uniqid(),
                     $Field->get_display_name(),
@@ -304,16 +308,6 @@ if( !class_exists( 'ABDWPSM_Section' ) ) {
             //  Merge together the two arrays with the passed array taking precedence
             $soa = $section_options_array + $defaults;
 
-            //  Add field objects
-            if( is_array( $soa['field_object_array'] ) ) {
-                //  Loop through the field objects and add individually so we
-                //  get the validation benefits of the add_field function instead
-                //  of simply assigning the array to $my_fields.
-                foreach( $soa['field_object_array'] as $Field ) {
-                    $this->add_field( $Field );
-                }
-            }
-
             //  Set the ID
             $this->set_id( $soa['id'] );
 
@@ -322,6 +316,17 @@ if( !class_exists( 'ABDWPSM_Section' ) ) {
 
             //  Set the display description
             $this->set_display_description( $soa['display_description'] );
+
+
+            //  Add field objects
+            if( is_array( $soa['field_object_array'] ) ) {
+                //  Loop through the field objects and add individually so we
+                //  get the validation benefits of the add_field function instead
+                //  of simply assigning the array to $my_fields.
+                foreach( $soa['field_object_array'] as $Field ) {
+                    $this->add_field( $Field, true );
+                }
+            }
         }   //  end __construct()
 
         public function get_fields() {
@@ -336,8 +341,22 @@ if( !class_exists( 'ABDWPSM_Section' ) ) {
         public function get_id() {
             return $this->my_id;
         }
-        public function get_options_group() {
-            return $this->my_options_group;
+        public function get_options_group( $the_object = true ) {
+            if( !$the_object ) {
+                return $this->my_options_group;
+            }
+            else {
+                //  Search all options groups for option group with identifying property
+                foreach( ABDWPSM_Settings_Manager::$options_groups as $og ) {
+                    if( $og->get_db_option_name() == $this->my_options_group ) {
+                        return $og;
+                    }
+                }
+            }
+
+            
+
+            return null;
         }
 
         public function set_id( $id ) {
@@ -372,19 +391,8 @@ if( !class_exists( 'ABDWPSM_Section' ) ) {
             $this->my_display_description = $display_description;
         }
 
-        public function set_options_group_reference( $Options_group ) {
-            //  Don't add to something that isn't an options group.
-            if( !( $Options_group instanceof ABDWPSM_Options_Group ) ) {
-                //  Okay, it's not an instance of ABDWPSM_Options_Group, to make
-                //  errors more helpful, what is it?
-                $type = ABDWPSM_Settings_Manager::wtf_is_this( $Options_group );
-
-                ABDWPSM_Settings_Manager::die_with_message( 'Expected ABDWPSM_Options_Group object.  Got ' . $type . '.' );
-                return;
-            }
-
-            //  Okay, if we're here, then we have a section, so set it.
-            $this->my_options_group = $Options_group;
+        public function set_options_group_reference( $db_option_name ) {
+            $this->my_options_group = $db_option_name;
         }
     }   //  end class
 }   //  end if( !class_exists( ...
