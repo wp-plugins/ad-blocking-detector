@@ -4,7 +4,7 @@ Donate link: http://adblockingdetector.johnmorris.me/
 Tags: adblock, adblocker, ad blocker, adblock plus, detector, advertisement, ads, ad blocking
 Requires at least: 4.2
 Tested up to: 4.2.3
-Stable tag: 3.1.1
+Stable tag: 3.1.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -123,6 +123,8 @@ screenshots.
 
 
 == Changelog ==
+= 3.1.2 =
+* Fixed broken "Global CSS Selectors" problem that stopped Ad Blocking Detector script from running at all.
 = 3.1.1 =
 * Fix undefined variable error.
 = 3.1.0 =
@@ -253,7 +255,9 @@ screenshots.
 
 
 == Upgrade Notice ==
-= 3.1.0 =
+= 3.1.2 =
+Dramatic performance improvements! If versions 3.0.0 through 3.0.2 were displaying errors, or was not functioning correctly, install this update!
+= 3.1.1 =
 Dramatic performance improvements! If versions 3.0.0 through 3.0.2 were displaying errors, or was not functioning correctly, install this update!
 = 3.1.0 =
 Dramatic performance improvements! If versions 3.0.0 through 3.0.2 were displaying errors, or was not functioning correctly, install this update!
