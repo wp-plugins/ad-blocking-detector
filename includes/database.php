@@ -79,8 +79,16 @@ if ( !class_exists( 'ABD_Database' ) ) {
 			}
 			else {	
 				//		Damn... we can't use the cache...
+				$sclist = get_option( 'abd_list_of_shortcodes' );
+				$update_list_flag = false;
+				if( !$sclist ) {
+					ABD_Log::error( 'No list of shortcodes available.  Searching all wp_options for matching shortcodes.' );
+					$update_list_flag = true;
+				}
 				if( $ignore_list ) {
 					ABD_Log::info( 'Forced ignore of shortcode list option. Searching all wp_options for matching shortcodes.' );
+				}
+				if( $ignore_list || !$sclist ) {
 					//	Get every database option, which we'll search through later
 					//	This is slow and takes a crap-ton of memory if the options table is
 					//	big with lots of objects and arrays.
@@ -89,7 +97,8 @@ if ( !class_exists( 'ABD_Database' ) ) {
 				else {
 					//	Okay, we can use the list of shortcodes, so get the list, loop
 					//	through it, and get each individual shortcode.
-					$sclist = get_option( 'abd_list_of_shortcodes', array() );
+					if( !$sclist ) { $sclist = array(); }
+
 					$options = array();
 					foreach( $sclist as $scon ) {
 						$sc = get_option( $scon );
@@ -110,6 +119,7 @@ if ( !class_exists( 'ABD_Database' ) ) {
 			//	the shortcode strings. This will be used to separate the shortcode ID
 			//	from the prefix.
 			$substr_cutoff = strlen( $prefix_used );
+			$abdsclist = array();
 
 			$time_bfl = microtime( true );
 			$mem_bfl = memory_get_usage( true );
@@ -140,6 +150,9 @@ if ( !class_exists( 'ABD_Database' ) ) {
 
 						//	Store result in array
 						$abd_scs[$sc_id] = $sc;
+
+						//	Add to list of shortcodes
+						$abdsclist[] = $prefix_used . $sc_id;
 					}
 					else {
 						//	Hmm... This shouldn't be happening... Let's log it
@@ -158,11 +171,30 @@ if ( !class_exists( 'ABD_Database' ) ) {
 				//ABD_Log::debug( 'Cache update value: ' . print_r( $abd_scs, true ) );
 			}
 
+			//	If we're supposed to update the shortcode list, do so
+			if( $update_list_flag ) {
+				update_option( 'abd_list_of_shortcodes', $abdsclist );
+			}
+
 			//		Performance log
 			ABD_Log::perf_summary( 'ABD_Database::get_all_shortcodes()', $start_time, $start_mem );
 
 			//		Return our results
 			return $abd_scs;
+		}
+
+		public static function count_shortcodes() {
+			//		Collect start state for performance logging
+			$start_time = microtime( true );
+			$start_mem = memory_get_usage( true );
+			
+			$sclist = get_option( 'abd_list_of_shortcodes', array() );
+
+			$count = count( $sclist );
+
+			ABD_Log::perf_summary( 'ABD_Database::count_shortcodes()', $start_time, $start_mem );
+
+			return $count;
 		}
 
 		public static function delete_shortcode( $id ) {
@@ -413,10 +445,17 @@ if ( !class_exists( 'ABD_Database' ) ) {
 
 
 			//	Loop through old shortcodes and make it a new shortcode
+			//	Before we do, let's reset the script timeout to account for people with a ton
+			//	of shortcodes.
+			set_time_limit( 60 );
 			$nwflag = false;	//	Will be set to true if any network wide shortcodes are detected.
+			$blogs = $wpdb->get_results( "SELECT blog_id FROM {$wpdb->blogs} WHERE site_id = '{$wpdb->siteid}' AND deleted='0' AND archived='0'", ARRAY_A );
 			foreach( $old_scs as $osc ) {
+				$loop_start_time = microtime( true );
+				$loop_start_mem = memory_get_usage( true );
+
 				ABD_Log::info( 'Found version 2 shortcode. Initiating transfer.' );
-				ABD_Log::debug( 'Old Shortcode Contents: ' . json_encode( $osc ) );
+				//ABD_Log::debug( 'Old Shortcode Contents: ' . json_encode( $osc ) );
 				$nsc = array(
 					'display_name' => $osc['name'],
 					'noadblocker'  => $osc['noadblock'],
@@ -434,7 +473,6 @@ if ( !class_exists( 'ABD_Database' ) ) {
 					$nsc['readonly'] = true;
 
 					//	Now, get all blog IDs
-					$blogs = $wpdb->get_results( "SELECT blog_id FROM {$wpdb->blogs} WHERE site_id = '{$wpdb->siteid}' AND deleted='0' AND archived='0'", ARRAY_A );					
 					if( !empty( $blogs ) ) {
 						ABD_Log::debug( 'Found ' . count( $blogs ) . ' multisite sites to add shortcode to.' );
 						
@@ -444,10 +482,7 @@ if ( !class_exists( 'ABD_Database' ) ) {
 							$res = ABD_Multisite::update_blog_option( $id, self::get_shortcode_prefix() . $osc['id'], $nsc );
 
 							if( $res ) {
-								ABD_Log::info( 'Successfully copied network wide shortcode "' . $osc['name'] . '" to multisite site "' . ABD_Multisite::get_blog_option( $id, 'blogname' ) );
-
-								update_option( 'abd_list_of_shortcodes', $scs );
-								ABD_Log::info( 'Adding ' . $osc['name'] . ' to list of shortcodes.' );
+								ABD_Log::info( 'Successfully copied network wide shortcode "' . $osc['name'] . '" to multisite site "' . ABD_Multisite::get_blog_option( $id, 'blogname' ) );								
 							}
 							else {
 								ABD_Log::error( 'Unknown failure transferring shortcode "' . $osc['name'] . '" to multisite site "' . ABD_Multisite::get_blog_option( $id, 'blogname' ) . '"' );
@@ -459,24 +494,31 @@ if ( !class_exists( 'ABD_Database' ) ) {
 				else {
 					//	Not a network wide shortcode or not a network... this is easier
 					$res = ABD_Multisite::update_blog_option( $osc['blog_id'], self::get_shortcode_prefix() . $osc['id'], $nsc );
+					$scns = ABD_Multisite::get_blog_option( $osc['blog_id'], 'abd_list_of_shortcodes', array() );
+					$scns[] = self::get_shortcode_prefix() . $osc['id'];
+					ABD_Multisite::update_blog_option( $osc['blog_id'], 'abd_list_of_shortcodes', $scns );
 
 					if( $res ) {
 						ABD_Log::info( 'Successfully transferred shortcode "' . $osc['name'] . '" from version 2 database table to version 3 WordPress option.' );
-
-						update_option( 'abd_list_of_shortcodes', $scs );
-						ABD_Log::info( 'Adding ' . $osc['name'] . ' to list of shortcodes.' );
 					}
 					else {
 						ABD_Log::error( 'Unknown failure transferring shortcode "' . $osc['name'] . '" from version 2 database table to version 3 WordPress option.' );
 						ABD_Log::debug( 'Failed shortcode option value: ' . print_r( $nsc, true ) );
 					}
-				}				
+				}
+
+				ABD_Log::perf_summary( 'ABD_Database::v2_to_v3_database_transfer() // transfer loop iteration', $loop_start_time, $loop_start_mem, true );
 			}
 
 			//	Warn users about use of any deprecated features (network wide shortcodes)
 			if( $nwflag ) {
 				add_action( 'network_admin_notices',
 					array( 'ABD_Admin_Views', 'deprecated_network_wide_shortcodes_notice' ) );
+			}
+
+			//	Delete list of shortcodes so it's reconstructed 
+			foreach( $blogs as $blog ) {
+				 ABD_Multisite::delete_blog_option( $blog['blog_id'], 'abd_list_of_shortcodes' );
 			}
 
 			//		Performance log

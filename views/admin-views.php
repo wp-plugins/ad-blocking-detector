@@ -127,6 +127,12 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				'delete_shortcode_failure_unknown' => array(
 					'msg'   => ABD_L::__( 'Shortcode deletion failed!' ),
 					'class' => 'error'
+				),
+
+				//	Send usage info message
+				'send_usage_info_success' => array(
+					'msg'   => ABD_L::__( 'Usage info submitted. Thanks for helping improve Ad Blocking Detector!' ),
+					'class' => 'updated'
 				)
 			);
 
@@ -188,6 +194,13 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 			 * be.  With a little bit of familiarity, I think you'll agree that this thing is
 			 * awesome.
 			 */
+			
+			//	If we don't need to, don't register all this crap. Some users have had performance
+			//	issues (e.g. out of memory), and this will break their whole damn site, rather than
+			//	just pages where this is needed.
+			if( !ABD_Perf_Tools::need_to_load_wpsm_settings() ) {
+				return;
+			}
 
 			//		Collect start state for performance logging
 			$start_time = microtime( true );
@@ -201,15 +214,14 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 			$time_bt = microtime( true );
 			$mem_bt = memory_get_usage( true );
 			
-			$GS_Tab = new ABDWPSM_Tab( array(
+			
+			new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Getting Started' ),
 				'display_description' => self::getting_started_tab_header(),
 				'url_slug'            => 'getting-started',
 				'page'                => 'ad-blocking-detector'
 			) );
-			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $GS_Tab', $time_bt, $mem_bt, true );
-			$time_after_tab = microtime( true );
-			$mem_after_tab = memory_get_usage( true );
+
 
 			$Existing_Shortcodes_Tab = new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Manage Shortcodes' ),
@@ -217,9 +229,7 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				'url_slug'            => 'manage-shortcodes',
 				'page'                => 'ad-blocking-detector'
 			) );
-			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $ES_Tab', $time_after_tab, $mem_after_tab, true );
-			$time_after_tab = microtime( true );
-			$mem_after_tab = memory_get_usage( true );
+
 
 			$New_Shortcode_Tab = new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Add New Shortcode' ),
@@ -227,9 +237,64 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				'url_slug'            => 'new-shortcodes',
 				'page'                => 'ad-blocking-detector'
 			) );
-			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $NS_Tab', $time_after_tab, $mem_after_tab, true );
-			$time_after_tab = microtime( true );
-			$mem_after_tab = memory_get_usage( true );
+
+				$NST_OG = new ABDWPSM_Options_Group( array(
+					'db_option_name' => ABD_Database::get_shortcode_prefix() . ABD_Database::get_next_id(),
+					'validation_callback'  => array( 'ABD_Admin_Views', 'cache_handler_validator' )						
+				) );
+				$NST_OG->add_to_tab( $New_Shortcode_Tab );
+
+					$NST_Basic_Section = new ABDWPSM_Section( array(
+						'id'                  => 'nst_og-basic_options',
+						'display_name'        => ABD_L::__( 'Basic Shortcode Settings' ),
+						'display_description' => self::add_new_basic_section_header()
+					) );
+					$NST_Basic_Section->add_to_options_group( $NST_OG );
+
+						$NST_Basic_Fs = array();
+						//	Basic Section
+						$NST_Basic_Fs[] = new ABDWPSM_Field( array(  
+							'field_name'           => 'display_name',
+							'type'                 => 'text',
+							'display_name'         => ABD_L::__( 'Name / Description' ),
+							'display_description'  => ABD_L::__( 'Give this shortcode an identifying name for readability.' ),
+							'example_entry'        => ABD_L::__( 'Google AdSense Sidebar Ad' ),
+							'field_options_array'  => array( 'required' => true )
+						) );
+						$NST_Basic_Fs[] = new ABDWPSM_Field( array(
+							'field_name'           => 'noadblocker',
+							'type'                 => 'textarea',
+							'display_name'         => ABD_L::__( 'No Ad Blocker Detected Content' ),
+							'display_description'  => sprintf( ABD_L::_x( 'Optional. The content to display to users with no detected ad blocker. Supports plain text or HTML. If you aren\'t familiar with HTML, you can use %sthis tool%s to generate the needed HTML for you.', 'No Ad Blocker Detected field description.' ), '<a href="' . self::$our_links['htmlcreator'] . '" target="_blank">', '</a>' )
+						) );
+						$NST_Basic_Fs[] = new ABDWPSM_Field( array(
+							'field_name'           => 'adblocker',
+							'type'                 => 'textarea',
+							'display_name'         => ABD_L::__( 'Ad Blocker Detected Content' ),
+							'display_description'  => sprintf( ABD_L::_x( 'Optional. The content to display to users with a detected ad blocker. Supports plain text or HTML. If you aren\'t familiar with HTML, you can use %sthis tool%s to generate the needed HTML for you.', 'Ad Blocker Detected field description.' ), '<a href="' . self::$our_links['htmlcreator'] . '" target="_blank">', '</a>' )
+						) );
+						$NST_Basic_Fs[] = new ABDWPSM_Field( array(
+							'field_name'           => 'user_defined_selectors',
+							'type'                 => 'text',
+							'display_name'         => ABD_L::__( 'User-Defined Wrapper CSS Selectors' ),
+							'display_description'  => sprintf( ABD_L::__( 'Optional. Improve ad blocker detection results by specifying the wrapping element around your advertisement that is not removed by ad blockers. This is required to detect privacy browser extensions like Ghostery, but not required for most ad blocking extensions like AdBlock Plus. Separate multiple selectors using semicolons.  %sRead this article%s for more information, detailed instructions, and examples.' ), '<a href="' . self::$our_links['userdefinedwrappers'] . '" target="_blank">', '</a>' ),
+							'example_entry'        => 'ins.adsbygoogle; #myadwrapper'
+						) );
+						$NST_Basic_Fs[] = new ABDWPSM_Field( array(
+							'field_name'           => 'blog_id',
+							'type'                 => 'hidden',
+							'field_options_array'  => array( 'default' => ABD_Multisite::get_current_blog_id() )
+						) );
+
+						foreach( $NST_Basic_Fs as $F ) {
+							$F->add_to_section( $NST_Basic_Section );
+						}
+			//	Free memory
+			unset( $NST_Basic_Fs );
+			unset( $NST_Basic_Section );
+			unset( $NST_OG );
+			unset( $New_Shortcode_Tab );
+
 
 			$Settings_Tab = new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Advanced Settings' ),
@@ -237,211 +302,172 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				'url_slug'            => 'settings',
 				'page'                => 'ad-blocking-detector'
 			) );
-			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $Settings_Tab', $time_after_tab, $mem_after_tab, true );
-			$time_after_tab = microtime( true );
-			$mem_after_tab = memory_get_usage( true );
+				
+				$AS_OG = new ABDWPSM_Options_Group( array(
+					'db_option_name' => 'abd_user_settings'
+				) );
+				$AS_OG->add_to_tab( $Settings_Tab );
 
-			$Debug_Tab = new ABDWPSM_Tab( array(
+					$AS_UDS_Section = new ABDWPSM_Section( array(
+						'id'                  => 'as_uds-user_defined_selectors',
+						'display_name'        => ABD_L::__( 'Improved Detection: User-Defined Wrapper CSS Selectors' ),
+						'display_description' => self::settings_user_defined_selectors_section_header()
+					) );
+					$AS_UDS_Section->add_to_options_group( $AS_OG );
+
+						$AS_UDS_Field = new ABDWPSM_Field( array(
+							'field_name'          => 'user_defined_selectors',
+							'type'                => 'text',
+							'display_name'        => ABD_L::__( 'Global CSS Selectors' ),
+							'display_description' => ABD_L::__( 'A list of CSS selectors for the wrapping elements. Separate multiple selectors with semicolons.' ),
+							'example_entry'       => 'ins.adsbygoogle; #myawesomeadserverwrapper',
+							'field_options_array' => array(
+								'default'    => 'ins.adsbygoogle',
+								'style'      => 'min-width: 350px'
+							)
+						) );
+						$AS_UDS_Field->add_to_section( $AS_UDS_Section );
+
+					$AS_Disable_Section = new ABDWPSM_Section( array(
+						'id'                  => 'as_uds-disable_detection_methods',
+						'display_name'        => ABD_L::__( 'Performance Improvement: Disable Detection Methods' ),
+						'display_description' => self::settings_disable_detection_method_section_header()
+					) );
+					$AS_Disable_Section->add_to_options_group( $AS_OG );
+
+						$AS_Disable_Iframe_Field = new ABDWPSM_Field( array(
+							'field_name'          => 'enable_iframe',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Iframe Detection Method' ),
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
+								'default' => 'yes'
+							)
+						) );
+						$AS_Disable_Iframe_Field->add_to_section( $AS_Disable_Section );
+
+						$AS_Disable_Div_Field = new ABDWPSM_Field( array(
+							'field_name'          => 'enable_div',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Div Element Detection Method' ),
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
+								'default' => 'yes'
+							)
+						) );
+						$AS_Disable_Div_Field->add_to_section( $AS_Disable_Section );
+
+						$AS_Disable_JS_Field = new ABDWPSM_Field( array(
+							'field_name'          => 'enable_js_file',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'JavaScript File Detection Method' ),
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
+								'default' => 'yes'
+							)
+						) );
+						$AS_Disable_JS_Field->add_to_section( $AS_Disable_Section );
+
+					$AS_Iframe_Section = new ABDWPSM_Section( array(
+						'id'                  => 'as_uds-customize_iframe',
+						'display_name'        => ABD_L::__( 'Customize Iframe Detection Method' ),
+						'display_description' => self::settings_customize_iframe_section_header()
+					) );
+					$AS_Iframe_Section->add_to_options_group( $AS_OG );
+
+						$AS_Iframe_URL = new ABDWPSM_Field( array(
+							'field_name'          => 'iframe_url',
+							'type'                => 'text',
+							'display_name'        => ABD_L::__( 'URL of Iframe' ),
+							'display_description' => ABD_L::__( 'The bait iframe\'s URL. This should contain ad or advertisement keywords. I recommend a URL that doesn\'t exist to keep loading times down. Leave empty to allow automatic an automatic URL choice.' ),
+							'example_entry'       => 'http://YHrSUDwvRGxPpWyM-ad.us/adserver/adlogger_tracker.php',
+							'field_options_array' => array(
+								'default' => '',
+								'style'   => 'width: 50%; max-width: 500px; min-width: 170px;'
+							)
+						) );
+						$AS_Iframe_URL->add_to_section( $AS_Iframe_Section );
+
+					$AS_Log_Section = new ABDWPSM_Section( array(
+						'id'                  => 'as_uds-log_management',
+						'display_name'        => ABD_L::__( 'Log Options' ),
+						'display_description' => self::settings_customize_log_section_header()
+					) );
+					$AS_Log_Section->add_to_options_group( $AS_OG );
+
+						$AS_Log_enable_perf = new ABDWPSM_Field( array(
+							'field_name'          => 'enable_perf_logging',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Performance Statistics Logging' ),
+							'display_description' => ABD_L::__( 'Whether to record execution times and memory usage in the Session Log. This helps tracking down performance related plugin bugs, but generates a lot of log entries and uses slightly more overhead and database traffic.' ),				
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
+								'default' => 'yes'
+							)
+						) );
+						$AS_Log_perf_filtering = new ABDWPSM_Field( array(
+							'field_name'          => 'perf_logging_only_above_limits',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Filter Performance Summary Log Entries' ),
+							'display_description' => ABD_L::__( 'Whether to limit performance log entries to those exceeding the time and memory limits.' ),				
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
+								'default' => 'no'
+							)
+						) );
+						$AS_Log_perf_time_limit = new ABDWPSM_Field( array(
+							'field_name'          => 'perf_logging_time_limit',
+							'type'                => 'number',
+							'display_name'        => ABD_L::__( 'Peformance Summary Log Entry Time Limit' ),
+							'display_description' => ABD_L::__( 'The time threshold, in milliseconds, at which log entries are highlighted and cut off if performance entry filtration is enabled.' ),
+							'field_options_array' => array(
+								'default' => 100
+							)
+						) );
+						$AS_Log_perf_mem_limit = new ABDWPSM_Field( array(
+							'field_name'          => 'perf_logging_mem_limit',
+							'type'                => 'number',
+							'display_name'        => ABD_L::__( 'Peformance Summary Log Entry Memory Limit' ),
+							'display_description' => ABD_L::__( 'The used memory threshold, in bytes, at which log entries are highlighted and cut off if performance entry filtration is enabled.' ),
+							'field_options_array' => array(
+								'default' => 1048576
+							)
+						) );
+						$AS_Log_enable_perf->add_to_section( $AS_Log_Section );
+						$AS_Log_perf_filtering->add_to_section( $AS_Log_Section );
+						$AS_Log_perf_time_limit->add_to_section( $AS_Log_Section );
+						$AS_Log_perf_mem_limit->add_to_section( $AS_Log_Section );
+
+			//	Free memory
+			unset( $AS_Log_enable_perf );
+			unset( $AS_Log_perf_filtering );
+			unset( $AS_Log_perf_time_limit );
+			unset( $AS_Log_perf_mem_limit );
+			unset( $AS_Log_Section );
+			unset( $AS_Iframe_URL );
+			unset( $AS_Iframe_Section );
+			unset( $AS_Disable_Iframe_Field );
+			unset( $AS_Disable_Div_Field );
+			unset( $AS_Disable_JS_Field );
+			unset( $AS_Disable_Section );
+			unset( $AS_UDS_Field );
+			unset( $AS_UDS_Section );
+			unset( $AS_OG );
+			unset( $Settings_Tab );
+
+
+			new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Report a Problem / Debug' ),
 				'display_description' => self::debug_tab_header(),
 				'url_slug'            => 'debug',
 				'page'                => 'ad-blocking-detector'
 			) );
-			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs - $Debug_Tab', $time_after_tab, $mem_after_tab, true );
-			$time_after_tab = microtime( true );
-			$mem_after_tab = memory_get_usage( true );
-
-			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // tabs', $time_bt, $mem_bt, true );
-
-			//	Options Groups
-			$time_bt = microtime( true );
-			$mem_bt = memory_get_usage( true );
-			
-			//	New Shortcode Tab
-			$NST_OG = new ABDWPSM_Options_Group( array(
-				'db_option_name' => ABD_Database::get_shortcode_prefix() . ABD_Database::get_next_id(),
-				'validation_callback'  => array( 'ABD_Admin_Views', 'cache_handler_validator' )						
-			) );
-			$NST_OG->add_to_tab( $New_Shortcode_Tab );
-
-			//	Settings Tab
-			$AS_OG = new ABDWPSM_Options_Group( array(
-				'db_option_name' => 'abd_user_settings'
-			) );
-			$AS_OG->add_to_tab( $Settings_Tab );
-			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // options groups', $time_bt, $mem_bt, true );
 
 
-
-			//	Sections
-			$time_bt = microtime( true );
-			$mem_bt = memory_get_usage( true );
-			
-			$NST_Basic_Section = new ABDWPSM_Section( array(
-				'id'                  => 'nst_og-basic_options',
-				'display_name'        => ABD_L::__( 'Basic Shortcode Settings' ),
-				'display_description' => self::add_new_basic_section_header()
-			) );
-			$NST_Basic_Section->add_to_options_group( $NST_OG );
-
-			$AS_UDS_Section = new ABDWPSM_Section( array(
-				'id'                  => 'as_uds-user_defined_selectors',
-				'display_name'        => ABD_L::__( 'Improved Detection: User-Defined Wrapper CSS Selectors' ),
-				'display_description' => self::settings_user_defined_selectors_section_header()
-			) );
-			$AS_UDS_Section->add_to_options_group( $AS_OG );
-
-			$AS_Disable_Section = new ABDWPSM_Section( array(
-				'id'                  => 'as_uds-disable_detection_methods',
-				'display_name'        => ABD_L::__( 'Performance Improvement: Disable Detection Methods' ),
-				'display_description' => self::settings_disable_detection_method_section_header()
-			) );
-			$AS_Disable_Section->add_to_options_group( $AS_OG );
-
-			$AS_Iframe_Section = new ABDWPSM_Section( array(
-				'id'                  => 'as_uds-customize_iframe',
-				'display_name'        => ABD_L::__( 'Customize Iframe Detection Method' ),
-				'display_description' => self::settings_customize_iframe_section_header()
-			) );
-			$AS_Iframe_Section->add_to_options_group( $AS_OG );			
-			
-			$AS_Log_Section = new ABDWPSM_Section( array(
-				'id'                  => 'as_uds-log_management',
-				'display_name'        => ABD_L::__( 'Log Options' ),
-				'display_description' => self::settings_customize_log_section_header()
-			) );
-			$AS_Log_Section->add_to_options_group( $AS_OG );
-			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // sections', $time_bt, $mem_bt, true );
+			//	Force cleanup before we move to populating existing shortcodes
+			ABD_Perf_Tools::force_garbage_collection();
 
 
-			//	Fields
-			$time_bt = microtime( true );
-			$mem_bt = memory_get_usage( true );
-			
-			$NST_Basic_Fs = array();
-			$AS_UDS_Fs = array();
-			//	Basic Section
-			$NST_Basic_Fs['display_name'] = new ABDWPSM_Field( array(  
-				'field_name'           => 'display_name',
-				'type'                 => 'text',
-				'display_name'         => ABD_L::__( 'Name / Description' ),
-				'display_description'  => ABD_L::__( 'Give this shortcode an identifying name for readability.' ),
-				'example_entry'        => ABD_L::__( 'Google AdSense Sidebar Ad' ),
-				'field_options_array'  => array( 'required' => true )
-			) );
-			$NST_Basic_Fs['noadblock'] = new ABDWPSM_Field( array(
-				'field_name'           => 'noadblocker',
-				'type'                 => 'textarea',
-				'display_name'         => ABD_L::__( 'No Ad Blocker Detected Content' ),
-				'display_description'  => sprintf( ABD_L::_x( 'Optional. The content to display to users with no detected ad blocker. Supports plain text or HTML. If you aren\'t familiar with HTML, you can use %sthis tool%s to generate the needed HTML for you.', 'No Ad Blocker Detected field description.' ), '<a href="' . self::$our_links['htmlcreator'] . '" target="_blank">', '</a>' )
-			) );
-			$NST_Basic_Fs['adblock'] = new ABDWPSM_Field( array(
-				'field_name'           => 'adblocker',
-				'type'                 => 'textarea',
-				'display_name'         => ABD_L::__( 'Ad Blocker Detected Content' ),
-				'display_description'  => sprintf( ABD_L::_x( 'Optional. The content to display to users with a detected ad blocker. Supports plain text or HTML. If you aren\'t familiar with HTML, you can use %sthis tool%s to generate the needed HTML for you.', 'Ad Blocker Detected field description.' ), '<a href="' . self::$our_links['htmlcreator'] . '" target="_blank">', '</a>' )
-			) );
-			$NST_Basic_Fs['user_defined_selectors'] = new ABDWPSM_Field( array(
-				'field_name'           => 'user_defined_selectors',
-				'type'                 => 'text',
-				'display_name'         => ABD_L::__( 'User-Defined Wrapper CSS Selectors' ),
-				'display_description'  => sprintf( ABD_L::__( 'Optional. Improve ad blocker detection results by specifying the wrapping element around your advertisement that is not removed by ad blockers. This is required to detect privacy browser extensions like Ghostery, but not required for most ad blocking extensions like AdBlock Plus. Separate multiple selectors using semicolons.  %sRead this article%s for more information, detailed instructions, and examples.' ), '<a href="' . self::$our_links['userdefinedwrappers'] . '" target="_blank">', '</a>' ),
-				'example_entry'        => 'ins.adsbygoogle; #myadwrapper'
-			) );
-			$NST_Basic_Fs['blog_id'] = new ABDWPSM_Field( array(
-				'field_name'           => 'blog_id',
-				'type'                 => 'hidden',
-				'field_options_array'  => array( 'default' => ABD_Multisite::get_current_blog_id() )
-			) );
-
-			//	Advanced Section
-			$enabled_text = ABD_L::__( 'Enabled (default)' );
-			$disabled_text = ABD_L::__( 'Disabled' );
-			$choices_array = array();
-			$choices_array[$enabled_text] = 'enabled';
-			$choices_array[$disabled_text] = 'disabled';
-					
-
-			foreach( $NST_Basic_Fs as $F ) {
-				$F->add_to_section( $NST_Basic_Section );
-			}
-
-
-
-			$AS_UDS_Field = new ABDWPSM_Field( array(
-				'field_name'          => 'user_defined_selectors',
-				'type'                => 'text',
-				'display_name'        => ABD_L::__( 'Global CSS Selectors' ),
-				'display_description' => ABD_L::__( 'A list of CSS selectors for the wrapping elements. Separate multiple selectors with semicolons.' ),
-				'example_entry'       => 'ins.adsbygoogle; #myawesomeadserverwrapper',
-				'field_options_array' => array(
-					'default'    => 'ins.adsbygoogle',
-					'style'      => 'min-width: 350px'
-				)
-			) );
-			$AS_UDS_Field->add_to_section( $AS_UDS_Section );
-
-			$AS_Disable_Iframe_Field = new ABDWPSM_Field( array(
-				'field_name'          => 'enable_iframe',
-				'type'                => 'radio',
-				'display_name'        => ABD_L::__( 'Iframe Detection Method' ),
-				'field_options_array' => array(
-					'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
-					'default' => 'yes'
-				)
-			) );
-			$AS_Disable_Iframe_Field->add_to_section( $AS_Disable_Section );
-
-			$AS_Disable_Div_Field = new ABDWPSM_Field( array(
-				'field_name'          => 'enable_div',
-				'type'                => 'radio',
-				'display_name'        => ABD_L::__( 'Div Element Detection Method' ),
-				'field_options_array' => array(
-					'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
-					'default' => 'yes'
-				)
-			) );
-			$AS_Disable_Div_Field->add_to_section( $AS_Disable_Section );
-
-			$AS_Disable_JS_Field = new ABDWPSM_Field( array(
-				'field_name'          => 'enable_js_file',
-				'type'                => 'radio',
-				'display_name'        => ABD_L::__( 'JavaScript File Detection Method' ),
-				'field_options_array' => array(
-					'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
-					'default' => 'yes'
-				)
-			) );
-			$AS_Disable_JS_Field->add_to_section( $AS_Disable_Section );
-
-
-
-
-			$AS_Iframe_URL = new ABDWPSM_Field( array(
-				'field_name'          => 'iframe_url',
-				'type'                => 'text',
-				'display_name'        => ABD_L::__( 'URL of Iframe' ),
-				'display_description' => ABD_L::__( 'The bait iframe\'s URL. This should contain ad or advertisement keywords. I recommend a URL that doesn\'t exist to keep loading times down. Leave empty to allow automatic an automatic URL choice.' ),
-				'example_entry'       => 'http://YHrSUDwvRGxPpWyM-ad.us/adserver/adlogger_tracker.php',
-				'field_options_array' => array(
-					'default' => '',
-					'style'   => 'width: 50%; max-width: 500px; min-width: 170px;'
-				)
-			) );
-			$AS_Iframe_URL->add_to_section( $AS_Iframe_Section );
-
-
-			$AS_Log_enable_perf = new ABDWPSM_Field( array(
-				'field_name'          => 'enable_perf_logging',
-				'type'                => 'radio',
-				'display_name'        => ABD_L::__( 'Performance Statistics Logging' ),
-				'display_description' => ABD_L::__( 'Whether to record execution times and memory usage in the Session Log. This helps tracking down performance related plugin bugs, but generates a lot of log entries and uses slightly more overhead and database traffic.' ),				
-				'field_options_array' => array(
-					'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
-					'default' => 'yes'
-				)
-			) );
-			$AS_Log_enable_perf->add_to_section( $AS_Log_Section );
 
 			ABD_Log::perf_summary( 'ABD_Database::wpsm_settings() // fields', $time_bt, $mem_bt, true );
 
@@ -556,11 +582,15 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 			<?php
 			echo self::getting_started_tab_content();
 
-
 			return ob_get_clean();
 		}
 
 		protected static function getting_started_tab_content() {
+			//		Collect start state for performance logging
+			$start_time = microtime( true );
+			$start_mem = memory_get_usage( true );
+			
+
 			if( defined( 'ABDBLC_ROOT_URL' ) ) {
 				//	Then our block list countermeasure plugin is loaded because it defines this constant.
 				$prefix = ABDBLC_ROOT_URL;
@@ -569,10 +599,22 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				$prefix = ABD_ROOT_URL;
 			}
 
-			$fallback_status = ABD_Anti_Adblock::bcc_plugin_status();
+			$bfs_time = microtime( true );
+			$bfs_mem = memory_get_usage( true );
+			$blcp_status = array(
+				'auto_plugin_activated'   => ABD_Anti_Adblock::bcc_plugin_status( 'auto_plugin_activated' ),
+				'manual_plugin_activated' => ABD_Anti_Adblock::bcc_plugin_status( 'manual_plugin_activated' ),
+				'auto_plugin_exists'      => ABD_Anti_Adblock::bcc_plugin_status( 'auto_plugin_exists' ),
+				'manual_plugin_exists'    => ABD_Anti_Adblock::bcc_plugin_status( 'manual_plugin_exists' ),
+				'plugin_activated'        => ABD_Anti_Adblock::bcc_plugin_status( 'plugin_activated' ),
+				'plugin_exists'           => ABD_Anti_Adblock::bcc_plugin_status( 'plugin_exists' )
+			);
+			ABD_Log::perf_summary( 'ABD_Admin_Views::getting_started_tab_content // before $blcp_status = ABD_Anti_Adblock::bcc_plugin_status();', $bfs_time, $bfs_mem, true );
+
 			$abd_settings = ABD_Database::get_settings();
 
 			ob_start();
+
 			?>
 			<div id="abd_getting_started_message" class="abd-masonry-wrapper">
 				<div class="abd-subtle-highlight abd-masonry-block">
@@ -598,7 +640,7 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 
 					<ul style="list-style-type: square">
 						<?php
-							if( $fallback_status['auto_plugin_activated'] || $fallback_status['manual_plugin_activated'] ) {
+							if( $blcp_status['plugin_activated'] ) {
 								$class = 'class="abd_success_message"';
 							}
 							else {
@@ -613,7 +655,7 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 							</ul>
 						</li>
 						<?php
-							if( count( ABD_Database::get_all_shortcodes() ) > 0 ) {
+							if( ABD_Database::count_shortcodes() > 0 ) {
 								$class = 'class="abd_success_message"';
 							}
 							else {
@@ -769,7 +811,10 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 			</div>
 
 			<?php
-			return ob_get_clean();
+			$ob = ob_get_clean();
+			ABD_Log::perf_summary( 'ABD_Admin_Views::getting_started_tab_content()', $start_time, $start_mem );
+
+			return $ob;
 		}
 
 		protected static function manage_shortcodes_tab_header() {
@@ -1224,12 +1269,16 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 					</p>
 					<div><textarea style='width: 100% !important'>SESSION LOG&#13;&#10;============&#13;&#10;============&#13;&#10;&#13;&#10;<?php echo ABD_Log::get_readable_log(); ?></textarea></div>
 
+					<p><strong><?php ABD_L::_e( 'Number of Log Entries:  ' ); ?></strong><?php echo count( ABD_Log::get_all_log_entries() ); ?></p>
 					<!-- Space for Date and Time -->
 					<p id="abd-js-date-time"><strong><?php ABD_L::_e( 'Current Date and Time: ' ); ?></strong></p>
 
 					<!-- Clear log button -->
-					<a href='<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=clear_log' ), 'user instructed deletion of all log entries' ); ?>' class='button'>
+					<a href='<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_clear_log' ), 'user instructed deletion of all log entries' ); ?>' class='button'>
 						<?php ABD_L::_e('Clear Log'); ?>
+					</a>
+					<a href='<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_send_usage_info' ), 'user instructed sending usage info to dev' ); ?>' class='button abd-submit-log-to-dev-button'>
+						<?php ABD_L::_e( 'Send a Copy of Log to Developer' ); ?>
 					</a>
 				</div>
 
@@ -1241,55 +1290,9 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 
 
 				<div class="abd-masonry-block">
-					<h3><?php ABD_L::_e( 'Plugin, WordPress, and Server Configuration Data' ); ?></h3>
+					<h3><?php ABD_L::_e( 'Plugin, WordPress, and Server Configuration Data' ); ?></h3>			
 
-					<?php 
-						//	Gather Data
-						$blc = ABD_Anti_Adblock::bcc_plugin_status(); 
-						if( $blc['auto_plugin_activated'] || $blc['manual_plugin_activated'] ) {
-							$blcactive = 'true';
-						}
-						else {
-							$blcactive = 'false';
-						}
-
-						if( $blc['auto_plugin_exists'] ) {
-							$blcexists = 'true';
-							$blctype = 'auto';
-						}
-						else if( $blc['manual_plugin_exists'] ) {
-							$blcexists = 'true';
-							$blctype = 'manual';
-						}
-						else {
-							$blcexists = 'false';
-							$blctype = 'N/A';
-						}
-
-						$blcdir = ABD_Anti_Adblock::get_bcc_plugin_dir_name();
-						if( !$blcdir ) { $blcdir = 'No BLC Plugin Directory'; }
-
-						$mem_usage = memory_get_peak_usage( true );
-						if( $mem_usage < 1024 ) { $mem_usage = $mem_usage . ' bytes'; }
-						else if( $mem_usage < 1048576 ) { $mem_usage = round( $mem_usage/1024, 2 ) . ' KB'; }
-						else { $mem_usage = round( $mem_usage/1048576, 2 ) . ' MB'; }
-					?>
-
-					<textarea id="abd-server-config-textarea">
-ENVIRONMENT DATA&#13;&#10;==================&#13;&#10;==================&#13;&#10;
-System: <?php echo php_uname(); ?>&#13;&#10;
-PHP Version: <?php echo phpversion(); ?>&#13;&#10;
-PHP/WordPress Memory Limit: <?php echo ini_get( 'memory_limit' ); ?>&#13;&#10;
-Memory Used: <?php echo $mem_usage; ?>&#13;&#10;
-PHP Max Execution Time: <?php echo ini_get( 'max_execution_time' ); ?>&#13;&#10;&#13;&#10;
-WordPress Version: <?php echo get_bloginfo('version'); ?>&#13;&#10;
-Total # of wp_options Entries: <?php echo ABD_Database::size_of_wp_options_table(); ?>&#13;&#10;
-Plugin Version: <?php echo ABD_VERSION; ?>&#13;&#10;
-BLC Plugin Exists?: <?php echo $blcexists; ?>&#13;&#10;
-BLC Plugin Active?: <?php echo $blcactive; ?>&#13;&#10;
-BLC Plugin Type?: <?php echo $blctype; ?>&#13;&#10;
-BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
-					</textarea>
+					<textarea id="abd-server-config-textarea"><?php echo ABD_Perf_Tools::get_readable_server_config_data(); ?></textarea>
 				</div>
 
 				
@@ -1349,7 +1352,14 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 		}
 		
 		protected static function block_list_countermeasure_plugin_section() {
-			$fps = ABD_Anti_Adblock::bcc_plugin_status();
+			$blcp_status = array(
+				'auto_plugin_activated'   => ABD_Anti_Adblock::bcc_plugin_status( 'auto_plugin_activated' ),
+				'manual_plugin_activated' => ABD_Anti_Adblock::bcc_plugin_status( 'manual_plugin_activated' ),
+				'auto_plugin_exists'      => ABD_Anti_Adblock::bcc_plugin_status( 'auto_plugin_exists' ),
+				'manual_plugin_exists'    => ABD_Anti_Adblock::bcc_plugin_status( 'manual_plugin_exists' ),
+				'plugin_activated'        => ABD_Anti_Adblock::bcc_plugin_status( 'plugin_activated' ),
+				'plugin_exists'           => ABD_Anti_Adblock::bcc_plugin_status( 'plugin_exists' )
+			);
 			ob_start();
 			?>
 
@@ -1386,7 +1396,7 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 				<ul>
 					<?php
 					//	Does fallback plugin exist
-					if( $fps['auto_plugin_exists'] > 0 || $fps['manual_plugin_exists'] ) {
+					if( $blcp_status['plugin_exists'] ) {
 						$class = 'abd_success_message';
 					}
 					else if ( ABD_Anti_Adblock::check_php_version() < 0 ) {
@@ -1401,7 +1411,7 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 						
 						<br /><strong style="color: #444; "><?php ABD_L::_e( 'Automatic Plugin Status' ); ?>:</strong>
 						<?php
-						if( $fps['auto_plugin_exists'] < 1 ) {
+						if( !$blcp_status['plugin_exists'] ) {
 							?>
 							<ul>
 								<li class="abd_failure_message">
@@ -1488,13 +1498,10 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 							<?php
 						}
 
-						if( $fps['manual_plugin_exists'] != 0 || $fps['auto_plugin_exists'] < 1 ) {
+						if( $blcp_status['manual_plugin_exists'] || !$blcp_status['auto_plugin_exists'] ) {
 							//	Does fallback plugin exist
-							if( $fps['manual_plugin_exists'] > 0 ) {
+							if( $blcp_status['manual_plugin_exists'] ) {
 								$class = 'abd_success_message';
-							}
-							else if ( $fps['manual_plugin_exists'] < 0 ) {
-								$class = 'abd_unknown_message';
 							}
 							else {
 								$class = 'abd_failure_message';
@@ -1506,7 +1513,7 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 								<li class='<?php echo $class; ?>'><?php echo ABD_L::__( 'Manual plugin exists?' ); ?></li>
 
 								<?php
-								if( $fps['manual_plugin_exists'] ) {
+								if( $blcp_status['manual_plugin_exists'] ) {
 									?>
 									<li class='abd_success_message'><?php echo ABD_L::__( 'Plugin Directory' ) . ': ' . ABD_Anti_Adblock::get_bcc_manual_plugin_dir_name(); ?></li>
 									<?php
@@ -1521,7 +1528,7 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 
 					<?php
 					//	Is fallback plugin activated
-					if( $fps['auto_plugin_activated'] > 0 || $fps['manual_plugin_activated'] > 0 ) {
+					if( $blcp_status['plugin_activated'] ) {
 						$class = 'abd_success_message';
 					}
 					else if ( ABD_Anti_Adblock::check_php_version() < 0 ) {
@@ -1534,8 +1541,7 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 					<li class="<?php echo $class; ?>">
 						<?php ABD_L::_e( 'The Block List Countermeasure Plugin is activated?' ); 
 
-						if( ( $fps['auto_plugin_exists']   > 0 && $fps['auto_plugin_activated']   < 1 ) || 
-							( $fps['manual_plugin_exists'] > 0 && $fps['manual_plugin_activated'] < 1 ) ) {
+						if( $blcp_status['plugin_exists'] && !$blcp_status['plugin_activated'] ) {
 
 							//	Plugin exists and is NOT activated
 							?>
@@ -1568,7 +1574,7 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 
 				<div id='abd-fallback-plugin-controls'>
 					<?php
-					if( $fps['auto_plugin_exists'] < 1 ) {
+					if( !$blcp_status['auto_plugin_exists'] ) {
 						$style = 'button-primary';
 					}
 					else {
@@ -1577,28 +1583,28 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 					?>
 					<p>
 						<strong><?php ABD_L::_e( 'Automatic Plugin Controls' ); ?></strong><br />
-						<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=create_bcc_plugin' ), 'user instructed anti-adblock fallback plugin creation' ); ?>" class='abd-fallback-plugin-copy-button button <?php echo $style; ?>'>
+						<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_create_bcc_plugin' ), 'user instructed anti-adblock fallback plugin creation' ); ?>" class='abd-fallback-plugin-copy-button button <?php echo $style; ?>'>
 							<?php ABD_L::_e( 'Automatically Install Plugin' ); ?>
 						</a> 
 
 
-						<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=reset_bcc_plugin_name' ), 'user instructed anti-adblock fallback plugin rename' ); ?>" id='abd-fallback-plugin-rename-button' class='button'>
+						<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_reset_bcc_plugin_name' ), 'user instructed anti-adblock fallback plugin rename' ); ?>" id='abd-fallback-plugin-rename-button' class='button'>
 							<?php ABD_L::_e( 'Reset Plugin Directory Name' ); ?>
 						</a> 
 
 
-						<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=delete_bcc_plugin' ), 'user instructed anti-adblock fallback plugin deletion' ); ?>" class='abd-fallback-plugin-delete-button button'>
+						<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_delete_bcc_plugin' ), 'user instructed anti-adblock fallback plugin deletion' ); ?>" class='abd-fallback-plugin-delete-button button'>
 							<?php ABD_L::_e( 'Delete Automatically Installed Plugin' ); ?>
 						</a>
 					</p>
 					<?php
-					if( $fps['auto_plugin_exists'] < 1 ) {
+					if( !$blcp_status['auto_plugin_exists'] ) {
 						?>
 						<p>
 							<strong><?php ABD_L::_e( 'Manual Plugin Controls' ); ?></strong><br />
 							<a class="button abd-download-manual-blc-plugin-button" href="<?php echo ABD_Anti_Adblock::get_bcc_manual_plugin_url(); ?>"><?php ABD_L::_e( 'Download Manual Plugin' ); ?></a>
 
-							<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=delete_manual_bcc_plugin' ), 'user instructed manual anti-adblock fallback plugin deletion' ); ?>" class='abd-fallback-plugin-delete-button button'>
+							<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_delete_manual_bcc_plugin' ), 'user instructed manual anti-adblock fallback plugin deletion' ); ?>" class='abd-fallback-plugin-delete-button button'>
 								<?php ABD_L::_e( 'Try to Delete Manually Installed Plugin' ); ?>
 							</a>						
 						</p>
@@ -1640,7 +1646,7 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 						<?php ABD_L::_e( 'Get This Shortcode' ); ?>
 					</a> &nbsp;
 
-					<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=delete_shortcode&id=' . $sc_id ), 'user instructed shortcode delete id equals ' . $sc_id ); ?>" class="abd-shortcode-delete-button button">
+					<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_delete_shortcode&id=' . $sc_id ), 'user instructed shortcode delete id equals ' . $sc_id ); ?>" class="abd-shortcode-delete-button button">
 						<?php ABD_L::_e( 'Delete This Shortcode' ); ?>
 					</a>
 				</div>
@@ -1833,6 +1839,7 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 				'close'                             => ABD_L::__( 'Close' ),
 				'nevermind'                         => ABD_L::__( 'No! Take me back.' ),
 				'affirmative'                       => ABD_L::__( 'Yes! I\'m sure.' ),
+				'wait'                              => ABD_L::__( 'Please wait, this may take some time.' ),
 				
 				'deleteDialogTitle'                 => ABD_L::__( 'Are you sure?' ),
 				'deleteDialogWarning'               => ABD_L::__( 'A deleted shortcode can not be recovered!' ),
@@ -1844,7 +1851,10 @@ BLC Plugin Dir: <?php echo $blcdir; ?>&#13;&#10;
 				'downloadManualPluginTitle'         => ABD_L::__( 'Beyond these hills there be dragons!' ),
 
 				'idlingForceRefreshWarning'         => ABD_L::__( 'To function properly, this page reserves database names and space on loading. However, if the page idles for an extended period, that reservation is released and a lot of errors and problems will result unless you refresh this page. It appears this page has sat for too long and needs a refresh. Upon closing this dialog, the page should automatically reload. If it does not, reload this page before submitting a shortcode.' ),
-				'idlingForceRefreshTitle'           => ABD_L::__( 'This page has been idling too long!' )
+				'idlingForceRefreshTitle'           => ABD_L::__( 'This page has been idling too long!' ),
+
+				'submitLogToDevWarning'             => ABD_L::__( 'Ad Blocking Detector is about to send the contents of the Session Log and Plugin, WordPress, and Server Configuration Data boxes to the developer. If you wish to check the contents before sending, close this dialog box, and review the content in the appropriate boxes. No contact information is submitted with the log entries, so you will not be responded to. If you require or desire feedback, you will need to contact the developer personally as well.' ),
+				'submitLogToDevTitle'               => ABD_L::__( 'Are you sure?' )
 			);
 
 			return $jsarr;

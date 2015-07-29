@@ -46,12 +46,15 @@ if ( !class_exists( 'ABD_Anti_Adblock' ) ) {
 		//	Gets the directory name of 
 		public static function get_bcc_plugin_dir_name() {
 			//	If we have a stored one, get it.
-			$dn = get_site_option( 'abd_blc_dir' );
+			$dir_name = get_site_option( 'abd_blc_dir' );
 
-			return $dn;
+			return $dir_name;
 		}
 
 		public static function create_bcc_plugin() {
+			$start_time = microtime( true );
+			$start_mem = memory_get_usage( true );
+
 			//	Path to fallback dir is one directory up from this plugin's directory, then
 			//	down to the bcc_plugin_dir_name
 			$dir_only = self::get_bcc_plugin_dir_name();
@@ -97,10 +100,16 @@ if ( !class_exists( 'ABD_Anti_Adblock' ) ) {
 			update_site_option( 'abd_blc_plugin_type', 'auto' );
 			update_site_option( 'abd_blc_dir', $dir_only );
 			ABD_Log::info( 'Successfully created Block List Countermeasure plugin in directory ' . $dir_only );
+
+			ABD_Log::perf_summary( 'ABD_Anti_Adblock::create_bcc_plugin()', $start_time, $start_mem );
+
 			return true;
 		}
 
 		public static function delete_bcc_plugin() {
+			$start_time = microtime( true );
+			$start_mem = memory_get_usage( true );
+
 			$do = self::get_bcc_plugin_dir_name();
 			if( !$do ) {
 				ABD_Log::error( 'Attempt to delete automatic Block List Countermeasure plugin, but no directory stored.  Plugin already deleted?' );
@@ -129,61 +138,111 @@ if ( !class_exists( 'ABD_Anti_Adblock' ) ) {
 				ABD_Log::info( 'Deleted Block List Countermeasure plugin successfully from ' . $do );
 			}
 
+			ABD_Log::perf_summary( 'ABD_Anti_Adblock::delete_bcc_plugin()', $start_time, $start_mem );
+
 			return $res;
 		}
 
-		public static function bcc_plugin_status() {
-			$status = array( 'auto_plugin_exists' => 0, 'auto_plugin_activated' => 0, 'manual_plugin_exists' => -1, 'manual_plugin_activated' => 0 );
+		public static function bcc_plugin_status( $what_you_want_to_know = 'plugin_activated' ) {
+			//		Collect start state for performance logging
+			// $start_time = microtime( true );
+			// $start_mem = memory_get_usage( true );	
 
-			$dn = get_site_option( 'abd_blc_dir' );
-			$pt = get_site_option( 'abd_blc_plugin_type' );
+			$dir_name = get_site_option( 'abd_blc_dir' );
+			$plugin_type = get_site_option( 'abd_blc_plugin_type' );		
 
-			if( $dn ) {//	Plugin should exist				
-				//	Let's make sure
-				$plugin_path = ABD_ROOT_PATH . '../' . $dn;
+			$plugin_path = ABD_ROOT_PATH . '../' . $dir_name;
+
+			switch( $what_you_want_to_know ) {
+				case 'plugin_activated':
+					$retval = ( self::bcc_plugin_status( 'auto_plugin_activated' ) || self::bcc_plugin_status( 'manual_plugin_activated' ) );
+					break;
+				case 'auto_plugin_activated':
+					$retval = ( defined( 'ABDBLC_VERSION' ) ? true : false ) && $plugin_type == 'auto';
+					break;
+				case 'manual_plugin_activated':
+					$retval = ( defined( 'ABDBLC_VERSION' ) ? true : false ) && $plugin_type == 'manual';
+					break;
+				case 'plugin_exists':
+					$retval = ( self::bcc_plugin_status( 'auto_plugin_exists' ) || self::bcc_plugin_status( 'manual_plugin_exists' ) );
+					break;
+				case 'auto_plugin_exists':
+					$retval = is_dir( $plugin_path ) && $plugin_type == 'auto';
+					break;
+				case 'manual_plugin_exists':
+					$retval = is_dir( $plugin_path) && $plugin_type == 'manual';
+					break;
+				default:
+					ABD_Log::error( 'Unknown BLC Plugin status request type: ' . $what_you_want_to_know );
+					$retval = null;
+					break;
+			}
+
+			//	ABD_Log::perf_summary( 'ABD_Anti_Adblock::bcc_plugin_status()', $start_time, $start_mem );
+
+			return $retval;
+
+
+
+
+
+
+
+
+			// $status = array( 'auto_plugin_exists' => 0, 'auto_plugin_activated' => 0, 'manual_plugin_exists' => -1, 'manual_plugin_activated' => 0 );
+
+			// $dir_name = get_site_option( 'abd_blc_dir' );
+			// $plugin_type = get_site_option( 'abd_blc_plugin_type' );
+
+			// if( $dir_name ) {//	Plugin should exist				
+			// 	//	Let's make sure
+			// 	$plugin_path = ABD_ROOT_PATH . '../' . $dir_name;
 				
-				if( !is_dir( $plugin_path ) ) {
-					ABD_Log::error( 'Block List Countermeasure plugin does not exist at the location it is expected to: ' . $plugin_path );
+			// 	if( !is_dir( $plugin_path ) ) {
+			// 		ABD_Log::error( 'Block List Countermeasure plugin does not exist at the location it is expected to: ' . $plugin_path );
 
-					//	The directory option is obviously out of sync...
-					delete_site_option( 'abd_blc_dir' );
+			// 		//	The directory option is obviously out of sync...
+			// 		delete_site_option( 'abd_blc_dir' );
 
-					//	The plugin does not exist... therefore it isn't activated either... so, return our vanilla $status
-					return $status;
-				}
+			// 		//	The plugin does not exist... therefore it isn't activated either... so, return our vanilla $status
+			// 		return $status;
+			// 	}
 
-				//	If we're here, the plugin exists.  Now we just need to know whether it's automatic or manual
-				if( $pt == 'auto' ) {
-					//	It's automatic
-					$status['auto_plugin_exists'] = 1;
-					$status['manual_plugin_exists'] = 0;
-				}
-				else {
-					//	It's manual
-					$status['manual_plugin_exists'] = 1;
-					$status['auto_plugin_exists'] = 0;
-				}
+			// 	//	If we're here, the plugin exists.  Now we just need to know whether it's automatic or manual
+			// 	if( $plugin_type == 'auto' ) {
+			// 		//	It's automatic
+			// 		$status['auto_plugin_exists'] = 1;
+			// 		$status['manual_plugin_exists'] = 0;
+			// 	}
+			// 	else {
+			// 		//	It's manual
+			// 		$status['manual_plugin_exists'] = 1;
+			// 		$status['auto_plugin_exists'] = 0;
+			// 	}
 
-				//	Let's check if the plugin is activated.  The simplest way to do that is check whether
-				//	one of it's crucial constants is defined.
-				if( defined( 'ABDBLC_ROOT_PATH' ) ) {
-					//	Yes, it is activated
-					if( $pt == 'auto' ) {
-						$status['auto_plugin_activated'] = 1;
-						$status['manual_plugin_activated'] = 0;
-					}
-					else {
-						$status['manual_plugin_activated'] = 1;
-						$status['auto_plugin_activated'] = 0;
-					}
-				}
-			}
-			else {	//	Plugin does not exist
-				$status['manual_plugin_exists'] = 0;
-				$status['auto_plugin_exists'] = 0;
-			}
+			// 	//	Let's check if the plugin is activated.  The simplest way to do that is check whether
+			// 	//	one of it's crucial constants is defined.
+			// 	if( defined( 'ABDBLC_ROOT_PATH' ) ) {
+			// 		//	Yes, it is activated
+			// 		if( $plugin_type == 'auto' ) {
+			// 			$status['auto_plugin_activated'] = 1;
+			// 			$status['manual_plugin_activated'] = 0;
+			// 		}
+			// 		else {
+			// 			$status['manual_plugin_activated'] = 1;
+			// 			$status['auto_plugin_activated'] = 0;
+			// 		}
+			// 	}
+			// }
+			// else {	//	Plugin does not exist
+			// 	$status['manual_plugin_exists'] = 0;
+			// 	$status['auto_plugin_exists'] = 0;
+			// }
 
-			return $status;
+
+			// ABD_Log::perf_summary( 'ABD_Anti_Adblock::bcc_plugin_status()', $start_time, $start_mem );
+
+			// return $status;
 		}
 
 

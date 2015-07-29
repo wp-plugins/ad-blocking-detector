@@ -11,6 +11,7 @@ require_once( ABD_ROOT_PATH . 'views/admin-views.php' );
 require_once( ABD_ROOT_PATH . 'views/public-views.php' );
 require_once( ABD_ROOT_PATH . "includes/widget.php" );
 require_once( ABD_ROOT_PATH . "includes/click-handler.php" );
+require_once( ABD_ROOT_PATH . "includes/perf-tools.php" );
 
 if ( !class_exists( 'ABD_Setup' ) ) {
 	class ABD_Setup {
@@ -119,6 +120,7 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 				wp_enqueue_script( 'abd-admin-view',
 					$prefix . 'assets/js/admin-view.js', array('jquery') );
 				wp_localize_script( 'abd-admin-view', 'objectL10n', ABD_Admin_Views::get_js_localization_array() );
+				wp_localize_script( 'abd-admin-view', 'abdPaths', array( 'abdRootUrl' => ABD_ROOT_URL ) );
 			}
 			public static function enqueue_helper_public_js( $prefix = ABD_ROOT_URL ) {
 				//	Our anti-adblock plugin may serve as a backup to prevent ad blockers
@@ -340,18 +342,20 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 
 
 			//	Button Click and Form Handlers
-			add_action( 'admin_post_create_bcc_plugin', 
+			add_action( 'admin_post_abd_create_bcc_plugin', 
 				array( 'ABD_Click_Handler', 'create_bcc_plugin' ) );
-			add_action( 'admin_post_reset_bcc_plugin_name', 
+			add_action( 'admin_post_abd_reset_bcc_plugin_name', 
 				array( 'ABD_Click_Handler', 'reset_bcc_plugin_name' ) );
-			add_action( 'admin_post_delete_bcc_plugin', 
+			add_action( 'admin_post_abd_delete_bcc_plugin', 
 				array( 'ABD_Click_Handler', 'delete_bcc_plugin' ) );
-			add_action( 'admin_post_delete_manual_bcc_plugin',
+			add_action( 'admin_post_abd_delete_manual_bcc_plugin',
 				array( 'ABD_Click_Handler', 'delete_manual_bcc_plugin' ) );
-			add_action( 'admin_post_clear_log',
+			add_action( 'admin_post_abd_clear_log',
 				array( 'ABD_Click_Handler', 'clear_log' ) );
-			add_action( 'admin_post_delete_shortcode',
+			add_action( 'admin_post_abd_delete_shortcode',
 				array( 'ABD_Click_Handler', 'delete_shortcode' ) );
+			add_action( 'admin_post_abd_send_usage_info',
+				array( 'ABD_Click_Handler', 'send_usage_info' ) );
 
 			//	Admin notices
 			add_action( 'admin_notices', 
@@ -553,7 +557,7 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 
 			/**
 			 * An associative array where the key is a plugin version, and the value is
-			 * a function, passed to admin_notices WordPress action that outputs the content
+			 * a function callback, passed to admin_notices WordPress action that outputs the content
 			 * of an upgrade message for that version.  This will be checked later on,
 			 * and if we are upgrading, and there is a mapped function, it will be tied
 			 * to an admin_notices action.
@@ -624,8 +628,8 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 				//	ALL VERSION JUMPS	//
 				//////////////////////////
 				//	Update the Block List Countermeasure Plugin if automatic
-				$blcp_status = ABD_Anti_Adblock::bcc_plugin_status();
-				if( !$blcp_status['manual_plugin_exists'] ) {
+				$blcp_manual_status = ABD_Anti_Adblock::bcc_plugin_status( 'manual_plugin_exists' );
+				if( !$blcp_manual_status ) {
 					//	Auto upgrade it
 					ABD_Log::info( 'Attempting upgrade of automatic Block List Countermeasure plugin.' );
 					ABD_Anti_Adblock::create_bcc_plugin();
@@ -638,7 +642,7 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 						array( 'ABD_Admin_Views', 'update_manual_blcp_notice' ) );
 
 					//	Deactivate manual plugin
-					if( defined( ABDBLC_SUBDIR_AND_FILE ) ) {	//	Block List Countermeasure plugin is activated
+					if( defined( 'ABDBLC_SUBDIR_AND_FILE' ) ) {	//	Block List Countermeasure plugin is activated
 						deactivate_plugins( ABDBLC_SUBDIR_AND_FILE );
 					}
 				}
@@ -691,15 +695,39 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 		 * function in the main plugin file: ABD_Setup::initialize()
 		 */
 		public static function initialize() {
+			$start_time = microtime( true );
+			$start_mem = memory_get_usage( true );
 			//	Upgrade function runs every time plugin loads. It determines
 			//	what, if anything needs to be done.
 			self::upgrade();
+			ABD_Log::perf_summary( 'ABD_Setup::initialize() // self::upgrade()', $start_time, $start_mem, true );
 
+			$sub_time = microtime( true );
+			$sub_mem = memory_get_usage( true );
 			self::menus();
+			ABD_Log::perf_summary( 'ABD_Setup::initialize() // self::menus()', $sub_time, $sub_mem, true );
+
+			$sub_time = microtime( true );
+			$sub_mem = memory_get_usage( true );
 			self::hooks();
+			ABD_Log::perf_summary( 'ABD_Setup::initialize() // self::hooks()', $sub_time, $sub_mem, true );
+
+			$sub_time = microtime( true );
+			$sub_mem = memory_get_usage( true );
 			self::enqueue();
+			ABD_Log::perf_summary( 'ABD_Setup::initialize() // self::enqueue()', $sub_time, $sub_mem, true );
+
+			$sub_time = microtime( true );
+			$sub_mem = memory_get_usage( true );
 			self::shortcodes();
+			ABD_Log::perf_summary( 'ABD_Setup::initialize() // self::shortcodes()', $sub_time, $sub_mem, true );
+
+			$sub_time = microtime( true );
+			$sub_mem = memory_get_usage( true );
 			self::plugin_list_links();
+			ABD_Log::perf_summary( 'ABD_Setup::initialize() // self::plugin_list_links()', $sub_time, $sub_mem, true );
+
+			ABD_Log::perf_summary( 'ABD_Setup::initialize()', $start_time, $start_mem );
 		}
 	}	//	end class
 }	//	end if( !class_exists( ...

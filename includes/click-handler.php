@@ -78,6 +78,38 @@ if( !class_exists( 'ABD_Click_Handler' ) ) {
 		}
 
 
+		public static function send_usage_info() {
+			$start_time = microtime( true );
+			$start_mem = memory_get_usage( true );
+
+			check_admin_referer( 'user instructed sending usage info to dev' );
+
+			$email_address = 'abd_usage_reports@johnmorris.me';
+			$headers = array(
+				'From: ABD AUTO EMAIL <' . $email_address . '><br />',
+				'Content-Type: text/html; charset=UTF-8'
+			);
+
+			$contents = 'Website: ' . get_home_url() . '<br /><br />';
+			$contents .= ABD_Perf_Tools::get_readable_server_config_data( '<br />' );
+			$contents .= '<br /><br /><br /><br />SESSION LOG<br />======================<br />';
+			$contents .= ABD_Log::get_readable_log( 0, '    >>   ', '<br /><br />' );
+
+			$res = wp_mail( $email_address, 'ABD Usage Info: ' . get_home_url(), $contents, $headers );
+
+			if( !$res ) {
+				ABD_Log::error( 'Unknown error sending usage info email to developer.' );
+			}
+			else {
+				ABD_Log::info( 'Successfully emailed developer usage info.' );
+			}
+
+			ABD_Log::perf_summary( 'ABD_Click_Handler::send_usage_info()', $start_time, $start_mem );
+
+			self::redirect( 'send_usage_info_success' );
+		}
+
+
 		
 
 
