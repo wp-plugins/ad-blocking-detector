@@ -4,11 +4,6 @@
  * plugin.
  */
 
-require_once ( ABD_ROOT_PATH . 'includes/multisite.php' );
-require_once ( ABD_ROOT_PATH . 'includes/database.php' );
-require_once ( ABD_ROOT_PATH . 'includes/localization.php' );
-
-
 if ( !class_exists( 'ABD_Admin_Views' ) ) {
 	class ABD_Admin_Views {
 		/**
@@ -132,6 +127,12 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				//	Send usage info message
 				'send_usage_info_success' => array(
 					'msg'   => ABD_L::__( 'Usage info submitted. Thanks for helping improve Ad Blocking Detector!' ),
+					'class' => 'updated'
+				),
+
+				//	Delete All Statistics Table Rows
+				'delete_all_stats_success' => array(
+					'msg'   => ABD_L::__( 'Statistics table cleared successfully.' ),
 					'class' => 'updated'
 				)
 			);
@@ -388,6 +389,49 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 						) );
 						$AS_Iframe_URL->add_to_section( $AS_Iframe_Section );
 
+
+					$AS_Stats_Section = new ABDWPSM_Section( array(
+						'id'                  => 'as_uds-stats_management',
+						'display_name'        => ABD_L::__( 'Statistics Collection Options' ),
+						'display_description' => ABD_L::__( 'This plugin can collect basic statistics on how many of your visitors utilize ad blockers. The statistics collection behavior can be modified below.' )
+					) );
+					$AS_Stats_Section->add_to_options_group( $AS_OG );
+
+						$AS_Stats_enable_statistics = new ABDWPSM_Field( array(
+							'field_name'          => 'enable_statistics',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Enable Statistics Collection' ),
+							'display_description' => ABD_L::__( 'Whether to enable ad blocker detection statistics. Statistics results are viewable in the "Statistics" tab at the top of this page.' ),
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disbaled'=>'no' ),
+								'default' => 'yes'
+							)
+						) );
+
+						$AS_Stats_ignore_ips = new ABDWPSM_Field( array(
+							'field_name'          => 'stats_ignore_ips',
+							'type'                => 'textarea',
+							'display_name'        => ABD_L::__( 'Ignored IP Addresses' ),
+							'display_description' => ABD_L::__( 'List of IP addresses for which statistics will not be collected. CIDR netmask ranges are acceptable. One IP address, or CIDR netmask, per line. Your detected IP address is: ' ) . $_SERVER['REMOTE_ADDR'],
+							'example_entry'       => '<br />' . $_SERVER['REMOTE_ADDR'] . '<br />192.168.0.0/16'
+						) );
+
+						$AS_Stats_ignore_registered = new ABDWPSM_Field( array(
+							'field_name'          => 'stats_ignore_registered',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Ignore Logged In Users' ),
+							'display_description' => ABD_L::__( 'If enabled, statistics will not be collected for logged in users.' ),
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disbaled'=>'no' ),
+								'default' => 'no'
+							)
+						) );
+
+						$AS_Stats_enable_statistics->add_to_section( $AS_Stats_Section );
+						$AS_Stats_ignore_ips->add_to_section( $AS_Stats_Section );
+						$AS_Stats_ignore_registered->add_to_section( $AS_Stats_Section );
+
+
 					$AS_Log_Section = new ABDWPSM_Section( array(
 						'id'                  => 'as_uds-log_management',
 						'display_name'        => ABD_L::__( 'Log Options' ),
@@ -395,11 +439,55 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 					) );
 					$AS_Log_Section->add_to_options_group( $AS_OG );
 
+						$AS_Log_enable_all = new ABDWPSM_Field( array(
+							'field_name'          => 'enable_logging',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Allow Logging' ),
+							'display_description' => ABD_L::__( 'Whether to log any events in the "Session Log." If this is disabled, no logging will occur.' ),
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disbaled'=>'no' ),
+								'default' => 'yes'
+							)
+						) );
+
+						$AS_Log_enable_info = new ABDWPSM_Field( array(
+							'field_name'          => 'enable_info_logging',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Information Logging' ),
+							'display_description' => ABD_L::__( 'Whether to log noteworthy plugin actions in the "Session Log." Most Ad Blocking Detector Dashboard activities generates one or more of these log entries. Disabling this will improve plugin performance, but will drastically reduce the effectiveness of logging.' ),
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disbaled'=>'no' ),
+								'default' => 'yes'
+							)
+						) );
+
+						$AS_Log_enable_debug = new ABDWPSM_Field( array(
+							'field_name'          => 'enable_debug_logging',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Debugging Data Logging' ),
+							'display_description' => ABD_L::__( 'Whether to log debugging data in the "Session Log." These entries are rarely generated outside of plugin updates and activation. They often accompany error log entries with contextual information. It is recommended to match this with error logging.  If error logging is on, debug logging should also be on.' ),
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disbaled'=>'no' ),
+								'default' => 'yes'
+							)
+						) );
+
+						$AS_Log_enable_error = new ABDWPSM_Field( array(
+							'field_name'          => 'enable_error_logging',
+							'type'                => 'radio',
+							'display_name'        => ABD_L::__( 'Error Report Logging' ),
+							'display_description' => ABD_L::__( 'Whether to log encountered errors in the "Session Log." These are very rarely generated outside of plugin updates and activation.' ),
+							'field_options_array' => array(
+								'choices' => array( 'Enabled'=>'yes', 'Disbaled'=>'no' ),
+								'default' => 'yes'
+							)
+						) );
+
 						$AS_Log_enable_perf = new ABDWPSM_Field( array(
 							'field_name'          => 'enable_perf_logging',
 							'type'                => 'radio',
 							'display_name'        => ABD_L::__( 'Performance Statistics Logging' ),
-							'display_description' => ABD_L::__( 'Whether to record execution times and memory usage in the Session Log. This helps tracking down performance related plugin bugs, but generates a lot of log entries and uses slightly more overhead and database traffic.' ),				
+							'display_description' => ABD_L::__( 'Whether to record execution times and memory usage in the Session Log. This helps tracking down performance related plugin bugs, but generates a lot of log entries and generates significant database traffic.' ),				
 							'field_options_array' => array(
 								'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
 								'default' => 'yes'
@@ -412,7 +500,7 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 							'display_description' => ABD_L::__( 'Whether to limit performance log entries to those exceeding the time and memory limits.' ),				
 							'field_options_array' => array(
 								'choices' => array( 'Enabled'=>'yes', 'Disabled'=>'no' ),
-								'default' => 'no'
+								'default' => 'yes'
 							)
 						) );
 						$AS_Log_perf_time_limit = new ABDWPSM_Field( array(
@@ -433,12 +521,20 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 								'default' => 1048576
 							)
 						) );
+						$AS_Log_enable_all->add_to_section( $AS_Log_Section );
+						$AS_Log_enable_info->add_to_section( $AS_Log_Section );
+						$AS_Log_enable_debug->add_to_section( $AS_Log_Section );
+						$AS_Log_enable_error->add_to_section( $AS_Log_Section );
 						$AS_Log_enable_perf->add_to_section( $AS_Log_Section );
 						$AS_Log_perf_filtering->add_to_section( $AS_Log_Section );
 						$AS_Log_perf_time_limit->add_to_section( $AS_Log_Section );
 						$AS_Log_perf_mem_limit->add_to_section( $AS_Log_Section );
 
 			//	Free memory
+			unset( $AS_Log_enable_all );
+			unset( $AS_Log_enable_info );
+			unset( $AS_Log_enable_debug );
+			unset( $AS_Log_enable_error );
 			unset( $AS_Log_enable_perf );
 			unset( $AS_Log_perf_filtering );
 			unset( $AS_Log_perf_time_limit );
@@ -455,6 +551,16 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 			unset( $AS_OG );
 			unset( $Settings_Tab );
 
+
+			$stats_enabled = ABD_Database::get_specific_setting( 'enable_statistics' );
+			if( $stats_enabled != 'no' ) {
+				new ABDWPSM_Tab( array(
+					'display_name'        => ABD_L::__( 'Statistics (Beta)' ),
+					'display_description' => self::statistics_tab_header(),
+					'url_slug'            => 'statistics',
+					'page'                => 'ad-blocking-detector'
+				) );
+			}
 
 			new ABDWPSM_Tab( array(
 				'display_name'        => ABD_L::__( 'Report a Problem / Debug' ),
@@ -609,9 +715,7 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				'plugin_activated'        => ABD_Anti_Adblock::bcc_plugin_status( 'plugin_activated' ),
 				'plugin_exists'           => ABD_Anti_Adblock::bcc_plugin_status( 'plugin_exists' )
 			);
-			ABD_Log::perf_summary( 'ABD_Admin_Views::getting_started_tab_content // before $blcp_status = ABD_Anti_Adblock::bcc_plugin_status();', $bfs_time, $bfs_mem, true );
-
-			$abd_settings = ABD_Database::get_settings();
+			ABD_Log::perf_summary( 'ABD_Admin_Views::getting_started_tab_content // before $blcp_status = ABD_Anti_Adblock::bcc_plugin_status();', $bfs_time, $bfs_mem, true );			
 
 			ob_start();
 
@@ -856,6 +960,41 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 
 			
 
+			<?php
+			return ob_get_clean();
+		}
+
+		protected static function statistics_tab_header() {
+			ob_start();
+			?>
+
+			<h2><?php ABD_L::_e( 'Ad Blocker Statistics' ); ?></h2>
+
+			<?php
+			echo self::statistics_tab_description();
+
+			return ob_get_clean();
+		}
+
+		protected static function statistics_tab_description() {
+			ob_start();
+			?>		
+			<p><?php ABD_L::_e( 'The charts below aggregate ad blocker status statistics collected during visits to your website. The collected statistics are subject to any filtering and recording rules defined on the Advanced Settings tab, and accuracy is not guaranteed.  Charts with no relevant data will be blank until data is collected.' ); ?></p>
+			<p style="color: #990000;"><strong><em><?php ABD_L::_e( 'The statistics feature of this plugin is currently in beta testing. The aggregated data below may be inaccurate and is subject to change. If flaws are discovered, all collected statistics during this beta may be reset without warning or prompting. Feedback on this feature is welcome.' ); ?></em></strong></p>
+			<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_delete_stats' ), 'user instructed deletion of all statistics table rows' ); ?>" id="abd-statistics-reset-button" class="button abd-delete-button"><?php ABD_L::_e( 'Reset Statistics' ); ?></a>
+
+
+			<div id='abd-stats-chart-page-load' class='abd-stats-chart'></div>
+			<p class='abd-stats-chart-caption'><?php echo sprintf( ABD_L::__( 'This chart shows ad blocker status on every recorded page load. This metric is useful for assessing %simpressions%s.  It can be skewed by multiple page loads per visitor, or visitors who toggled on or off their ad blocker while on your website. ' ), '<a href="https://en.wikipedia.org/wiki/Impression_(online_media)" target="_blank">', '</a>' ); ?></p>
+			
+			<div id='abd-stats-chart-unique-user' class='abd-stats-chart'></div>
+			<p class='abd-stats-chart-caption'><?php ABD_L::_e( 'This chart shows the ad blocker status for unique viewers.  This filters out the previous chart\'s skew, caused by page reloads, multiple page visits, and return views of your site.  Viewers are counted a maximum of once in each category.  Uniqueness is determined by IP address.  This metric is useful for assessing the ad blocker usage proclivity of your audience. It can be skewed by users who toggle their ad blocker on or off during their visit to your site, and by users whose IP address changes between page loads or site visits.' ); ?></p>
+
+			<div id="abd-stats-chart-change-disable" class="abd-stats-chart"></div>
+			<p class='abd-stats-chart-caption'><?php ABD_L::_e( 'This chart shows how many users first visited your site with an ad blocker enabled, and who later disabled it.  This metric can be a rough estimation of the effectiveness of disable ad blocker pleas.  It can be skewed by returning visitors, who toggled ad blockers off on other websites, between visits to yours. It does not take into account multiple ad blocker state toggles per visitor. If the visitor ever had an ad blocker on, and turned it off on a later page load, they are counted.' ); ?></p>
+
+			<div id="abd-stats-chart-change-enable" class="abd-stats-chart"></div>
+			<p class='abd-stats-chart-caption'><?php ABD_L::_e( 'This chart shows how many users first visited your site with an ad blocker disabled, and who later enabled it.  This metric can be a rough estimation of how many users felt the need to turn on an ad blocker on your site for some reason.  It can be skewed by returning visitors, who toggled on ad blockers on other websites, between visits to yours. It does not take into account multiple ad blocker state toggles per visitor. If the visitor ever had an ad blocker off, and turned it on, on a later page load, they are counted.' ); ?></p>
 			<?php
 			return ob_get_clean();
 		}
@@ -1646,7 +1785,7 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 						<?php ABD_L::_e( 'Get This Shortcode' ); ?>
 					</a> &nbsp;
 
-					<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_delete_shortcode&id=' . $sc_id ), 'user instructed shortcode delete id equals ' . $sc_id ); ?>" class="abd-shortcode-delete-button button">
+					<a href="<?php echo wp_nonce_url( admin_url( 'admin-post.php?action=abd_delete_shortcode&id=' . $sc_id ), 'user instructed shortcode delete id equals ' . $sc_id ); ?>" class="abd-shortcode-delete-button abd-delete-button button">
 						<?php ABD_L::_e( 'Delete This Shortcode' ); ?>
 					</a>
 				</div>
@@ -1854,7 +1993,10 @@ if ( !class_exists( 'ABD_Admin_Views' ) ) {
 				'idlingForceRefreshTitle'           => ABD_L::__( 'This page has been idling too long!' ),
 
 				'submitLogToDevWarning'             => ABD_L::__( 'Ad Blocking Detector is about to send the contents of the Session Log and Plugin, WordPress, and Server Configuration Data boxes to the developer. If you wish to check the contents before sending, close this dialog box, and review the content in the appropriate boxes. No contact information is submitted with the log entries, so you will not be responded to. If you require or desire feedback, you will need to contact the developer personally as well.' ),
-				'submitLogToDevTitle'               => ABD_L::__( 'Are you sure?' )
+				'submitLogToDevTitle'               => ABD_L::__( 'Are you sure?' ),
+
+				'resetStatisticsTitle'                 => ABD_L::__( 'Are you sure?' ),
+				'resetStatisticsWarning'               => ABD_L::__( 'This will delete all recorded statistical information, and can not be undone!' )
 			);
 
 			return $jsarr;

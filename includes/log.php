@@ -9,21 +9,33 @@ if ( !class_exists( 'ABD_Log' ) ) {
 		protected static $our_option_name = 'abd_event_log';
 
 		public static function error( $msg, $indented = false ) {
-			self::generic_log_entry( 'ERROR', $msg, $indented );
+			$enable_errors = ABD_Database::get_specific_setting( 'enable_error_logging' );
+
+			if( $enable_errors != 'no' ) {
+				self::generic_log_entry( 'ERROR', $msg, $indented );
+			}
 		}
 
 		public static function info( $msg, $indented = false ) {
-			self::generic_log_entry( 'INFO', $msg, $indented );
+			$enable_info = ABD_Database::get_specific_setting( 'enable_info_logging' );
+
+			if( $enable_info != 'no' ) {
+				self::generic_log_entry( 'INFO', $msg, $indented );
+			}
 		}
 
 		public static function debug( $msg, $indented = false ) {
-			self::generic_log_entry( 'DEBUG', $msg, $indented );
+			$enable_debug = ABD_Database::get_specific_setting( 'enable_debug_logging' );
+
+			if( $enable_debug != 'no' ) {
+				self::generic_log_entry( 'DEBUG', $msg, $indented );
+			}
 		}
 
 		public static function perf( $msg, $indented = false ) {
-			$settings = ABD_Database::get_settings();
+			$enable_perf_logging = ABD_Database::get_specific_setting( 'enable_perf_logging' );
 
-			if( $settings['enable_perf_logging'] == 'yes' ) {
+			if( $enable_perf_logging != 'no' ) {
 				self::generic_log_entry( 'PERF', $msg, $indented );
 			}
 		}
@@ -47,6 +59,12 @@ if ( !class_exists( 'ABD_Log' ) ) {
 		}
 
 		public static function get_readable_log( $num_entries = 0, $indentation = '    >>   ', $line_endings = '&#13;&#10;&#13;&#10;' ) {
+			$enabled = ABD_Database::get_specific_setting( 'enable_logging' );
+
+			if( $enabled === 'no' ) {
+				return ABD_L::__( '* Logging has been disabled in Advanced Settings.' );
+			}
+
 			$readable = '';
 			$es = self::get_all_log_entries();
 
@@ -89,6 +107,10 @@ if ( !class_exists( 'ABD_Log' ) ) {
 				$readable .= $indentation . $type . ' :: ' . $time . ' ::   ' . $msg . /*' ::  ' . $loc .*/ $line_endings;
 			}
 
+			if( empty( $readable ) ) {
+				$readable = ABD_L::__( '* No log entries at this time.' );
+			}
+
 			return $readable;
 		}
 
@@ -98,28 +120,35 @@ if ( !class_exists( 'ABD_Log' ) ) {
 
 
 		protected static function generic_log_entry( $type, $msg, $indented = false ) {
-			$e = self::get_all_log_entries();
+			$enable = ABD_Database::get_specific_setting( 'enable_logging' );
 
-			$e[] = array(
-				'type' => $type,
-				'message' => $msg,
-				'time' => date( 'm/d/y @ H:i:s (P' ) . ' GMT)',
-				'indented' => $indented
-			);
+			if( $enable != 'no' ) {
+				$e = self::get_all_log_entries();
 
-			update_site_option( self::get_option_name(), $e );
+				$e[] = array(
+					'type' => $type,
+					'message' => $msg,
+					'time' => date( 'm/d/y @ H:i:s (P' ) . ' GMT)',
+					'indented' => $indented
+				);			
 
-			self::prune_log();
+				$e = self::prune_log( $e );
+
+				update_site_option( self::get_option_name(), $e );
+			}
 		}
 
-		protected static function prune_log( $max_entries = 500 ) {
-			$es = self::get_all_log_entries();
-
-			if( count( $es ) > $max_entries ) {
-				$es = array_slice( $es, -1*$max_entries );
+		protected static function prune_log( $value = null, $max_entries = 500 ) {
+			if( $value == null ) {
+				$value = self::get_all_log_entries();
 			}
 
-			update_option( self::$our_option_name, $es );
+
+			if( count( $value ) > $max_entries ) {
+				$value = array_slice( $value, -1*$max_entries );
+			}
+
+			return $value;
 		}
 
 
@@ -198,13 +227,17 @@ if ( !class_exists( 'ABD_Log' ) ) {
 		public static function perf_summary( $func_name, $start_time, $start_mem, $sub_entry = false, $time_alert_threshold = 100, $mem_alert_threshold = 500000 ) {
 			//	Check for settings thresholds and filtration
 			$settings = ABD_Database::get_settings();
-			if( isset( $settings['perf_logging_time_limit'] ) ) {
-				$time_alert_threshold = $settings['perf_logging_time_limit'];
+			$time_limit = ABD_Database::get_specific_setting( 'perf_logging_time_limit' );
+			$mem_limit = ABD_Database::get_specific_setting( 'perf_logging_mem_limit' );
+			$only_above_threshold = ABD_Database::get_specific_setting( 'perf_logging_only_above_limits' );
+
+			if( !is_null( $time_limit ) ) {
+				$time_alert_threshold = $time_limit;
 			}
-			if( isset( $settings['perf_logging_mem_limit'] ) ) {
-				$mem_alert_threshold = $settings['perf_logging_mem_limit'];
+			if( !is_null( $mem_limit ) ) {
+				$mem_alert_threshold = $mem_limit;
 			}
-			if( isset( $settings['perf_logging_only_above_limits'] ) && $settings['perf_logging_only_above_limits'] == 'yes' ) {
+			if( $only_above_threshold != 'no' ) {
 				$only_above_threshold = true;
 			}
 			else {
