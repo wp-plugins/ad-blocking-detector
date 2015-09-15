@@ -3,7 +3,7 @@
  * Plugin Name: Ad Blocking Detector - Block List Countermeasure
  * Plugin URI: http://adblockingdetector.johnmorris.me
  * Description: Provides fallback files in the event the main Ad Blocking Detector's assets are blocked.
- * Version: 3.3.1
+ * Version: 3.3.3
  * Author: John Morris
  * Author URI: http://cs.johnmorris.me
  * License: GPL2
@@ -38,7 +38,7 @@
  *    \\//    \\//    \\//    \\//
  *     \/      \/      \/      \/                          */
 
-define( 'ABDBLC_VERSION', '3.3.1' );
+define( 'ABDBLC_VERSION', '3.3.3' );
 
 /*     /\      /\      /\      /\
  *    //\\    //\\    //\\    //\\
@@ -56,7 +56,8 @@ define ( 'ABDBLC_SUBDIR_AND_FILE', plugin_basename(__FILE__) );
 if( !class_exists( 'ABDBLC' ) ) {
     class ABDBLC {
         public function __construct() {
-            add_action( 'admin_init', array( &$this, 'admin_init_handler' ) );
+            //  Once plugins are all loaded, run dependency checks
+            add_action( 'plugins_loaded', array( &$this, 'plugins_all_loaded' ) );
 
             //  Activation
             register_activation_hook( ABDBLC_PLUGIN_FILE,
@@ -67,13 +68,16 @@ if( !class_exists( 'ABDBLC' ) ) {
                 array( &$this, 'hooks_helper_deactivation' ) );
         }
 
-        public function admin_init_handler() {
+        public function plugins_all_loaded() {
             //  We only want to do stuff if Ad Blocking Detector is installed and active
-            if( !is_plugin_active( 'ad-blocking-detector/ad-blocking-detector.php' ) ) {
+            //  WordPress' is_plugin_active() function seems to fail for some users, so 
+            //  instead, rely on class_exists check for a crucial ABD class ABD_Setup
+            //  if( !is_plugin_active( 'ad-blocking-detector/ad-blocking-detector.php' ) ) {
+            if( !class_exists( 'ABD_Setup' ) ) {
                 //  It's not installed or active
-                //  Notify the user, deactivate this plugin, then phone home.
+                //  Notify the user, then phone home.
                 add_action( 'admin_notices', array( &$this, 'admin_notice_missing_abd_handler' ) );
-                deactivate_plugins( ABDBLC_SUBDIR_AND_FILE );
+
                 return;
             }
 
@@ -81,8 +85,8 @@ if( !class_exists( 'ABDBLC' ) ) {
             if( !defined( 'ABDBLC_ROOT_URL' ) ) {
                 //  Somebody deleted this crucial constant, which is how Ad Blocking Detector
                 //  knows whether to refer to these fallback files or not.
-                add_action( 'admin_notices', array( &$this, 'admin_notice_missing_consts_handler' ) );
-                deactivate_plugins( ABDBLC_SUBDIR_AND_FILE );
+                add_action( 'admin_notices', array( &$this, 'admin_notice_missing_consts_handler' ) );                
+
                 return;
             }
 
@@ -122,7 +126,7 @@ if( !class_exists( 'ABDBLC' ) ) {
         public function admin_notice_missing_abd_handler() {
            $this->generic_error_handler(
                 sprintf( 
-                    __( '%1$s depends on the %2$s plugin. Please activate %2$s, then try reactivating %1$s.', 'ad-blocking-detector' ), 
+                    __( '%1$s depends on the %2$s plugin. Please activate %2$s, then try reactivating %1$s if it is deactivated.', 'ad-blocking-detector' ), 
                     '<em>Ad Blocking Detector - Block List Countermeasure</em>', 
                     '<em>Ad Blocking Detector</em>' 
                 )

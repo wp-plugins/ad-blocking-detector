@@ -176,7 +176,7 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 					$sec = 'security=\"restricted\" sandbox=\"\"';
 				}
 				else {
-					$iframe_url = "http://YHrSUDwvRGxPpWyM-ad.us/adserver/adlogger_tracker.php";
+					$iframe_url = "http://advert-serv.johnmorris.me/adserver/adlogger_tracker.php";
 					$sec = '';
 				}
 
@@ -658,6 +658,12 @@ if ( !class_exists( 'ABD_Setup' ) ) {
 				//////////////////////////////////////////////
 				if( $upgrading_version == '3.0.1' || $upgrading_version == '3.0.0' ) {
 					ABD_Database::v31_to_v32_database_update();
+				}
+				
+				if( $new_version == '3.3.3' ) {
+					//	MALWARE Warning
+					add_action( 'admin_notices',
+						array( 'ABD_Admin_Views', 'malware_notice' ) );
 				}
 
 				//////////////////////////
